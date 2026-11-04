@@ -28,7 +28,7 @@ _STAGES: list[tuple[str, str]] = [
 _ANALYSIS_ROLES = ("STRATEGIST", "CHALLENGER", "RESEARCHER", "DEVILS_ADVOCATE")
 
 # Per-agent glyph motion while the card is THINKING; applied as a class on
-# the glyph span and animated only inside ``.is-thinking`` (see theme.py).
+# the avatar glyph and animated only inside ``.is-thinking`` (see theme.py).
 _GLYPH_MOTION: dict[str, str] = {
     "STRATEGIST": "gm-rotate",
     "CHALLENGER": "gm-lunge",
@@ -36,6 +36,47 @@ _GLYPH_MOTION: dict[str, str] = {
     "DEVILS_ADVOCATE": "gm-wobble",
     "SUPREME_JUDGE": "gm-gleam",
 }
+
+# Claude-Code-style working verbs, cycled by a CSS ticker while THINKING.
+# Each role gets its own vocabulary so the arena reads as five distinct minds.
+_THINKING_VERBS: dict[str, tuple[str, ...]] = {
+    "STRATEGIST": ("BUILDING CASE", "MARSHALLING EVIDENCE", "STEELMANNING"),
+    "CHALLENGER": ("PROBING WEAKNESSES", "FORGING COUNTERS", "ATTACKING ASSUMPTIONS"),
+    "RESEARCHER": ("AUDITING CLAIMS", "TRACING SOURCES", "WEIGHING EVIDENCE"),
+    "DEVILS_ADVOCATE": ("HUNTING BLIND SPOTS", "FLIPPING THE BOARD", "BENDING PERSPECTIVES"),
+    "SUPREME_JUDGE": ("WEIGHING ARGUMENTS", "CROSS-CHECKING LOGIC", "DELIBERATING"),
+}
+
+
+def _avatar_html(cfg: AgentConfig, status: AgentStatus) -> str:
+    """Avatar tile for one agent: glyph + status ring/orbit/check/animation.
+
+    Status behavior is pure CSS keyed off the card's state class:
+    waiting floats dimmed, thinking spins an orbit ring, completed pops a
+    check badge (gated by the JS-added ``.aw-enter``), failed shakes once.
+    """
+    motion = _GLYPH_MOTION.get(cfg.role.name, "")
+    return (
+        f'<span class="aw-avatar {motion}" aria-hidden="true">'
+        f'<span class="aw-avatar-glyph">{cfg.glyph}</span>'
+        '<span class="aw-avatar-ring"></span>'
+        '<span class="aw-avatar-orbit"><i></i></span>'
+        '<span class="aw-avatar-check">&#10003;</span>'
+        "</span>"
+    )
+
+
+def _status_tail(role_value: str, status: AgentStatus) -> str:
+    """Status text area: a cycling verb ticker while working, else the label."""
+    if status is not AgentStatus.THINKING:
+        return status.value.upper()
+    verbs = _THINKING_VERBS.get(role_value, ("THINKING",))
+    items = "".join(f'<b class="aw-verb">{escape(v)}</b>' for v in verbs)
+    return (
+        f'<span class="aw-verbs" style="--verbs:{len(verbs)}">'
+        f'<span class="aw-verbs-track">{items}</span></span>'
+    )
+
 
 
 def _stable_html(html: str) -> str:
@@ -235,20 +276,20 @@ def render_agent_card(cfg: AgentConfig, result: AgentResult | None, index: int =
             f'<span class="aw-latency">{result.latency_s:.1f}s</span>{copy_btn}</div>'
         )
 
-    glyph_motion = _GLYPH_MOTION.get(cfg.role.value, "")
+    avatar = _avatar_html(cfg, status)
     st.markdown(
         _stable_html(f"""
         <div class="aw-card {pill_class}" data-role="{escape(cfg.role.value)}" data-name="{escape(cfg.display_name)}" data-model="{escape(cfg.model)}" data-provider="{escape(cfg.provider)}" style="--accent:{cfg.accent};--i:{index}">
           <div class="aw-card-line"></div>
           <div class="aw-card-head">
-            <span class="aw-glyph {glyph_motion}">{cfg.glyph}</span>
+            {avatar}
             <span class="aw-name">{escape(cfg.display_name)}</span>
             {eq}{expand}
           </div>
           <span class="aw-chip" title="{escape(cfg.provider)}">{escape(cfg.model)}</span>
           <div class="aw-card-tag aw-micro">{escape(cfg.tagline)}</div>
           <span class="aw-pill {pill_class}">
-            <span class="aw-pill-dot"></span>{status.value.upper()}
+            <span class="aw-pill-dot"></span>{_status_tail(cfg.role.name, status)}
           </span>
           {body}
           {foot}

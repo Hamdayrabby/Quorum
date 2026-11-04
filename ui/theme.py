@@ -484,6 +484,121 @@ div[data-testid="stPills"] button {
 .aw-card.is-thinking .gm-wobble { animation: aw-gm-wobble 1.1s ease-in-out infinite; }
 .aw-card.is-thinking .gm-gleam { animation: aw-gm-gleam 1.4s ease-in-out infinite; }
 
+/* --- agent avatar: identity tile with per-status behavior ---
+   waiting: dimmed + floating glyph · thinking: orbit ring + travelling dot
+   completed: check badge pops (JS-gated via .aw-enter) · failed: red tile */
+.aw-card-head .aw-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
+  background:
+    radial-gradient(120% 120% at 25% 20%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    var(--surface-2);
+  color: var(--accent);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.aw-card:hover .aw-avatar {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.aw-avatar-glyph { font-size: 17px; line-height: 1; transform-origin: center; transition: transform 0.18s ease; }
+.aw-card:hover .aw-avatar-glyph { transform: scale(1.12); }
+
+.aw-avatar-ring,
+.aw-avatar-orbit {
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  opacity: 0;
+  pointer-events: none;
+}
+.aw-avatar-ring { border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
+.aw-avatar-orbit i {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.aw-card.is-waiting .aw-avatar { opacity: 0.6; }
+.aw-card.is-waiting .aw-avatar-glyph { animation: aw-float 3.6s ease-in-out infinite; }
+
+.aw-card.is-thinking .aw-avatar {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 0 22px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.aw-card.is-thinking .aw-avatar-ring { opacity: 1; animation: aw-avatar-rotate 6s linear infinite; }
+.aw-card.is-thinking .aw-avatar-orbit { opacity: 1; animation: aw-avatar-rotate 2.4s linear infinite; }
+@keyframes aw-avatar-rotate { to { transform: rotate(360deg); } }
+
+.aw-avatar-check {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  color: #0a0e14;
+  background: var(--ok);
+  opacity: 0;
+  transform: scale(0.4);
+}
+.aw-card.is-completed .aw-avatar-check { opacity: 1; transform: scale(1); }
+.aw-card.aw-enter.is-completed .aw-avatar-check {
+  animation: aw-pop 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+  animation-delay: 0.2s;
+}
+.aw-card.is-failed .aw-avatar {
+  border-color: color-mix(in srgb, var(--err) 55%, var(--border));
+  color: var(--err);
+  background: color-mix(in srgb, var(--err) 8%, var(--surface-2));
+}
+.aw-card.aw-enter.is-failed .aw-avatar { animation: aw-shake 0.5s ease-in-out both; animation-delay: 0.25s; }
+
+/* Claude-Code-style verb ticker in the thinking pill: a static 1-line
+   window with an inner track that rolls through this agent's working
+   verbs, one step per ~1.6s. The animation lives on the track — animating
+   the window itself would drag content outside the clip. */
+.aw-pill .aw-verbs {
+  display: inline-flex;
+  height: 14px;
+  overflow: hidden;
+}
+.aw-pill .aw-verbs-track {
+  display: flex;
+  flex-direction: column;
+}
+.aw-pill .aw-verb {
+  display: block;
+  height: 14px;
+  line-height: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.aw-pill.is-thinking .aw-verbs-track {
+  animation: aw-verbs-roll calc(var(--verbs) * 1.6s) steps(var(--verbs)) infinite;
+}
+@keyframes aw-verbs-roll { to { transform: translateY(calc(var(--verbs) * -14px)); } }
+
 /* thinking equalizer: three accent bars beside the agent name */
 .aw-eq { display: inline-flex; align-items: flex-end; gap: 3px; height: 14px; margin-left: auto; }
 .aw-eq span {

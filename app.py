@@ -24,11 +24,15 @@ _ROLES = list(AGENT_CONFIGS)  # pipeline execution order
 
 
 def _missing_keys() -> list[str]:
-    """Env var names for agents with no usable key (settings override or env)."""
+    """Env var names (deduped, order-preserving) for agents with no usable key.
+
+    One env var can back several agents (e.g. RIVER_API_KEY serves both
+    Challenger and Devil's Advocate), so the banner must not repeat it.
+    """
     missing: list[str] = []
     for role in _ROLES:
         cfg = resolve_config(role)
-        if not has_credentials(cfg):
+        if not has_credentials(cfg) and cfg.api_key_env not in missing:
             missing.append(cfg.api_key_env)
     return missing
 
