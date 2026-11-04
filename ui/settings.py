@@ -165,6 +165,10 @@ def _render_model_picker(role: AgentRole, models: list[str]) -> None:
     resolved = resolve_config(role)
     index = models.index(resolved.model) if resolved.model in models else 0
     selected = st.selectbox("Model", models, key=model_key, index=index)
+    st.markdown(
+        '<div class="aw-sidebar-help" style="margin-top:2px">Type to filter the list.</div>',
+        unsafe_allow_html=True,
+    )
     if selected and selected != resolved.model:  # guard: save only on actual change
         try:
             save_override(role, model=selected)

@@ -785,6 +785,21 @@ div[data-testid="stPills"] button {
   color: var(--text-2);
   font-size: 12px;
 }
+
+/* Scroll insurance for the settings sidebar. The content can grow very tall
+   (six agents x forms + an 85-model picker), and the model picker is a
+   React Aria combobox whose virtual dropdown renders as a fixed overlay.
+   Keep the content container the scroll owner, and cap the dropdown so it
+   stays inside short viewports with its own explicit internal scroll. */
+[data-testid="stSidebar"] { height: 100dvh; }
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+  overflow-y: auto;
+  height: 100%;
+}
+[data-testid="stSidebar"] [role="listbox"] {
+  max-height: 220px;
+  overflow-y: auto;
+}
 .aw-status {
   display: inline-flex;
   align-items: center;
@@ -885,10 +900,14 @@ def inject() -> None:
 
 
 def page_config() -> None:
-    """Streamlit page settings; must run before any other st command."""
+    """Streamlit page settings; must run before any other st command.
+
+    ``initial_sidebar_state`` is intentionally not set here: the settings
+    panel lives in the sidebar, and ``.streamlit/config.toml`` expands it.
+    Setting it here would override that config with a collapsed default.
+    """
     st.set_page_config(
         page_title="Quorum",
         page_icon=None,
         layout="wide",
-        initial_sidebar_state="collapsed",
     )
