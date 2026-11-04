@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quorum — Project Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1B2430;
+    --ink-2: #4A5568;
+    --ink-3: #8A94A6;
+    --gold: #A8842C;
+    --gold-soft: #F4EBD3;
+    --line: #D9DEE7;
+    --card: #FFFFFF;
+    --tint: #F6F8FB;
+    --blue: #2F6BDF;
+    --green: #1E9E6A;
+    --red: #C24545;
+    --amber: #C98A1B;
+    --teal: #128F76;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #E8EAEE;
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    margin: 10mm auto;
+    background: #fff;
+    padding: 14mm 16mm 12mm;
+    box-shadow: 0 4px 22px rgba(20, 28, 40, 0.18);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+    @page { size: A4; margin: 0; }
+  }
+  .mono { font-family: "JetBrains Mono", "Consolas", monospace; }
+  .disp { font-family: "Space Grotesk", "Inter", sans-serif; }
+
+  /* ---------- page header / footer ---------- */
+  .phead {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 6px; margin-bottom: 12px;
+  }
+  .phead .mark { font-family: "Space Grotesk"; font-weight: 700; font-size: 13px; letter-spacing: 0.14em; }
+  .phead .mark b { color: var(--gold); font-weight: 700; }
+  .phead .no { font-family: "JetBrains Mono"; font-size: 9px; letter-spacing: 0.18em; color: var(--ink-3); text-transform: uppercase; }
+  .pfoot {
+    margin-top: auto; padding-top: 6px; border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between;
+    font-family: "JetBrains Mono"; font-size: 8.5px; letter-spacing: 0.16em;
+    color: var(--ink-3); text-transform: uppercase;
+  }
+
+  h2.sec {
+    font-family: "Space Grotesk"; font-size: 15px; font-weight: 700; letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 8px; margin: 11px 0 7px;
+  }
+  h2.sec .n {
+    font-family: "JetBrains Mono"; font-size: 9.5px; color: #fff; background: var(--ink);
+    border-radius: 4px; padding: 2px 6px; letter-spacing: 0.1em;
+  }
+  h2.sec svg { color: var(--gold); flex: 0 0 auto; }
+  p.body, li.b { font-size: 10.6px; line-height: 1.62; color: var(--ink-2); }
+  p.body { margin-bottom: 6px; }
+  li.b { list-style: none; display: flex; gap: 8px; margin-bottom: 4px; }
+  li.b::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--gold); margin-top: 6.5px; flex: 0 0 auto; }
+  b { color: var(--ink); font-weight: 600; }
+  .gold { color: var(--gold); }
+
+  /* ---------- title block (page 1) ---------- */
+  .titlebox { text-align: center; padding: 6px 0 10px; border-bottom: 3px double var(--ink); margin-bottom: 12px; }
+  .titlebox .wordmark { font-family: "Space Grotesk"; font-weight: 700; font-size: 34px; letter-spacing: 0.10em; color: var(--ink); }
+  .titlebox .wordmark b { color: var(--gold); }
+  .titlebox .tag { font-family: "JetBrains Mono"; font-size: 9.5px; letter-spacing: 0.34em; color: var(--ink-2); margin-top: 5px; text-transform: uppercase; }
+  .titlebox .meta { font-family: "JetBrains Mono"; font-size: 8.5px; letter-spacing: 0.14em; color: var(--ink-3); margin-top: 8px; text-transform: uppercase; }
+
+  /* ---------- icons ---------- */
+  .ic { display: inline-flex; align-items: center; justify-content: center; }
+  .ic svg { width: 100%; height: 100%; }
+
+  /* ---------- pipeline diagram ---------- */
+  .diagram { background: var(--tint); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 9px; }
+  .dnode {
+    background: var(--card); border: 1.4px solid var(--ink); border-radius: 8px;
+    padding: 6px 10px; text-align: center; position: relative;
+  }
+  .dnode .t { font-weight: 700; font-size: 10.5px; color: var(--ink); }
+  .dnode .s { font-family: "JetBrains Mono"; font-size: 7.8px; letter-spacing: 0.08em; color: var(--ink-3); text-transform: uppercase; margin-top: 1px; }
+  .dnode.gold { border-color: var(--gold); background: var(--gold-soft); }
+  .darrow { display: flex; justify-content: center; padding: 2px 0; color: var(--ink-3); }
+  .stage { display: flex; align-items: center; gap: 8px; }
+  .stagelabel {
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-family: "JetBrains Mono"; font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-2); border-left: 2px solid var(--gold); padding-left: 4px; flex: 0 0 auto;
+  }
+  .stagebody { flex: 1 1 auto; }
+  .pair { display: flex; gap: 8px; align-items: stretch; }
+  .pair .dnode { flex: 1 1 0; }
+  .conc {
+    font-family: "JetBrains Mono"; font-size: 7.5px; letter-spacing: 0.14em; color: var(--blue);
+    border: 1px dashed var(--blue); border-radius: 999px; padding: 2px 7px;
+    align-self: center; text-align: center; flex: 0 0 auto; text-transform: uppercase; background: #fff;
+  }
+  .verdictrow { display: flex; gap: 8px; align-items: stretch; }
+  .verdictrow .dnode { flex: 1 1 0; }
+  .cap { font-family: "JetBrains Mono"; font-size: 7.8px; letter-spacing: 0.12em; color: var(--ink-3); text-transform: uppercase; text-align: center; margin-top: 6px; }
+
+  /* ---------- five minds table ---------- */
+  table.minds { width: 100%; border-collapse: collapse; margin-top: 2px; }
+  table.minds th {
+    font-family: "JetBrains Mono"; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #fff; background: var(--ink); padding: 5px 8px; text-align: left;
+  }
+  table.minds td { border-bottom: 1px solid var(--line); padding: 6px 8px; font-size: 10px; line-height: 1.45; color: var(--ink-2); vertical-align: middle; }
+  table.minds tr:nth-child(even) td { background: var(--tint); }
+  table.minds .aname { font-weight: 700; color: var(--ink); font-size: 10.5px; white-space: nowrap; }
+  table.minds .mico { width: 26px; height: 26px; border-radius: 7px; background: var(--gold-soft); border: 1px solid var(--gold); color: var(--gold); padding: 4px; }
+  table.minds .mono2 { font-family: "JetBrains Mono"; font-size: 8.6px; color: var(--ink-2); }
+
+  /* ---------- resilience diagram ---------- */
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .fbox { border: 1.3px solid var(--ink); border-radius: 8px; background: #fff; padding: 6px 9px; text-align: center; flex: 1 1 0; }
+  .fbox .t { font-weight: 700; font-size: 9.6px; }
+  .fbox .s { font-family: "JetBrains Mono"; font-size: 7.6px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; line-height: 1.35; }
+  .fbox.good { border-color: var(--green); background: #EAF6F0; }
+  .fbox.bad { border-color: var(--red); background: #FBEDED; }
+  .farrow { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--ink-3); padding: 0 2px; min-width: 26px; }
+  .farrow .lbl { font-family: "JetBrains Mono"; font-size: 6.8px; letter-spacing: 0.04em; color: var(--ink-2); text-align: center; line-height: 1.25; margin-top: 1px; }
+
+  /* ---------- lifecycle chips ---------- */
+  .lifecycle { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 3.5px 10px;
+    font-family: "JetBrains Mono"; font-size: 8.6px; letter-spacing: 0.12em; text-transform: uppercase;
+    background: #fff; color: var(--ink-2);
+  }
+  .chip i { width: 7px; height: 7px; border-radius: 4px; display: inline-block; }
+  .chip.wait i { background: var(--ink-3); }
+  .chip.think i { background: var(--amber); }
+  .chip.done i { background: var(--green); }
+  .chip.fail i { background: var(--red); }
+
+  /* ---------- engineering card grid ---------- */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ecard { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: #fff; display: flex; gap: 8px; }
+  .ecard .ico { width: 26px; height: 26px; border-radius: 7px; background: var(--tint); border: 1px solid var(--line); color: var(--gold); padding: 5px; flex: 0 0 auto; }
+  .ecard .t { font-weight: 700; font-size: 10px; color: var(--ink); }
+  .ecard .d { font-size: 9.4px; line-height: 1.5; color: var(--ink-2); margin-top: 2px; }
+
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kv { font-family: "JetBrains Mono"; font-size: 9px; color: var(--ink-2); }
+  .kv b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ================= PAGE 1 ================= -->
+<div class="page">
+  <div class="phead">
+    <div class="mark">QUO<b>RUM</b></div>
+    <div class="no">Project Report &#183; 1 / 3</div>
+  </div>
+
+  <div class="titlebox">
+    <div class="wordmark">QUO<b>RUM</b></div>
+    <div class="tag">Five Minds &#183; One Verdict</div>
+    <div class="meta">Advanced AI course project &#183; Multi-agent debate arena &#183; Streamlit &#183; Python 3.12</div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span><span class="n">01</span> Objective</h2>
+  <p class="body"><b>Quorum</b> is a debate arena where <b>five LLM agents, each powered by a different provider</b>, argue a proposition: two build opposing opening cases, two audit and attack both sides, and a judge delivers a <b>scored, structured verdict</b>.</p>
+  <li class="b"><span>Demonstrate a real <b>multi-provider, multi-agent pipeline</b> — five different LLM vendors in one workflow.</span></li>
+  <li class="b"><span>Show <b>staged concurrency</b> (agents inside a stage run in parallel) and <b>graceful failure</b> — no single agent can crash the debate.</span></li>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="n">02</span> System Architecture</h2>
+  <div class="diagram">
+    <div style="display:flex; justify-content:center;">
+      <div class="dnode" style="min-width:190px;">
+        <div class="t">Topic + Debate Mode</div>
+        <div class="s">user input &#183; e.g. &#8220;remote work vs office&#8221;</div>
+      </div>
+    </div>
+    <div class="darrow"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="19"/><polyline points="6 13 12 20 18 13"/></svg></div>
+
+    <div class="stage">
+      <div class="stagelabel">Stage 2 &#183; Openings</div>
+      <div class="stagebody">
+        <div class="pair">
+          <div class="dnode"><div class="t">Strategist</div><div class="s">strongest case FOR</div></div>
+          <div class="conc">runs in<br>parallel</div>
+          <div class="dnode"><div class="t">Challenger</div><div class="s">strongest case AGAINST</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="darrow"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="19"/><polyline points="6 13 12 20 18 13"/></svg></div>
+
+    <div class="stage">
+      <div class="stagelabel">Stage 3 &#183; Analysis</div>
+      <div class="stagebody">
+        <div class="pair">
+          <div class="dnode"><div class="t">Researcher</div><div class="s">audits claims &#183; weak logic</div></div>
+          <div class="conc">runs in<br>parallel</div>
+          <div class="dnode"><div class="t">Devil&#8217;s Advocate</div><div class="s">attacks both sides</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="darrow"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="19"/><polyline points="6 13 12 20 18 13"/></svg></div>
+
+    <div class="stage">
+      <div class="stagelabel">Stage 4 &#183; Verdict</div>
+      <div class="stagebody">
+        <div class="verdictrow">
+          <div class="dnode gold"><div class="t">Supreme Judge</div><div class="s">reads openings + analysis</div></div>
+          <div class="dnode gold"><div class="t">Verdict</div><div class="s">winner &#183; scores /100 &#183; fallacies</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">Stages run sequentially &#183; agents inside a stage run concurrently (asyncio.gather)</div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="n">03</span> The Five Minds</h2>
+  <table class="minds">
+    <tr><th style="width:30px"></th><th>Agent</th><th>Provider</th><th>Model (current)</th><th>Responsibility</th></tr>
+    <tr>
+      <td><span class="ic mico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span></td>
+      <td class="aname">Strategist</td><td>Google Gemini</td><td class="mono2">gemini-3.6-flash</td><td>Builds the strongest opening case <b>for</b> the proposition.</td>
+    </tr>
+    <tr>
+      <td><span class="ic mico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span></td>
+      <td class="aname">Challenger</td><td>River AI &#183; DeepSeek</td><td class="mono2">deepseek-v4.1-flash</td><td>Builds the strongest case <b>against</b> the proposition.</td>
+    </tr>
+    <tr>
+      <td><span class="ic mico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span></td>
+      <td class="aname">Researcher</td><td>Mistral AI</td><td class="mono2">mistral-medium</td><td>Audits both openings for unsupported claims and weak logic.</td>
+    </tr>
+    <tr>
+      <td><span class="ic mico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span></td>
+      <td class="aname">Devil&#8217;s Advocate</td><td>River AI &#183; GLM</td><td class="mono2">glm-5.3-flash</td><td>Attacks both sides; surfaces overlooked perspectives.</td>
+    </tr>
+    <tr>
+      <td><span class="ic mico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></span></td>
+      <td class="aname">Supreme Judge</td><td>NVIDIA NIM</td><td class="mono2">nemotron (large)</td><td>Scores both sides; delivers the final verdict as structured output.</td>
+    </tr>
+  </table>
+  <div class="pfoot"><span>QUORUM &#183; Five minds &#183; One verdict</span><span>Page 1 of 3</span></div>
+</div>
+
+<!-- ================= PAGE 2 ================= -->
+<div class="page">
+  <div class="phead">
+    <div class="mark">QUO<b>RUM</b></div>
+    <div class="no">Project Report &#183; 2 / 3</div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span><span class="n">04</span> Engineering Highlights</h2>
+  <div class="cards">
+    <div class="ecard">
+      <span class="ic ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+      <div><div class="t">Async client</div><div class="d">One OpenAI-compatible <span class="mono">httpx</span> client; 90&nbsp;s timeout; agents call their providers concurrently.</div></div>
+    </div>
+    <div class="ecard">
+      <span class="ic ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span>
+      <div><div class="t">Smart retries</div><div class="d">Exponential backoff <span class="mono">~1s &#8594; ~2s</span> (+ jitter), only on rate limits (429) and server errors (5xx). Auth errors fail fast.</div></div>
+    </div>
+    <div class="ecard">
+      <span class="ic ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+      <div><div class="t">Graceful failure</div><div class="d">An agent failure becomes a <b>FAILED card</b>, never a crash; the debate always returns a renderable state.</div></div>
+    </div>
+    <div class="ecard">
+      <span class="ic ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/></svg></span>
+      <div><div class="t">Structured verdict</div><div class="d">Judge output parsed as JSON (winner, scores, fallacies); if unparsed, the raw reply is shown unmodified &#8212; never invented.</div></div>
+    </div>
+    <div class="ecard">
+      <span class="ic ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      <div><div class="t">Live pipeline view</div><div class="d">Stepper + five status cards re-render on every state change: WAITING &#8594; THINKING &#8594; COMPLETED / FAILED.</div></div>
+    </div>
+    <div class="ecard">
+      <span class="ic ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+      <div><div class="t">Runtime settings</div><div class="d">Sidebar: per-agent key + base URL, live connection test, model picker; overrides saved per agent.</div></div>
+    </div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="n">05</span> Resilience &#8212; Retry &amp; Failure Flow</h2>
+  <div class="diagram">
+    <div class="flow">
+      <div class="fbox"><div class="t">Request</div><div class="s">agent &#8594; provider API</div></div>
+      <div class="farrow"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><div class="lbl">429 / 5xx</div></div>
+      <div class="fbox"><div class="t">Backoff</div><div class="s">~1s then ~2s + jitter</div></div>
+      <div class="farrow"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><div class="lbl">retry &#8804; 2</div></div>
+      <div class="fbox good"><div class="t">Success</div><div class="s">content flows downstream</div></div>
+    </div>
+    <div class="darrow"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <div class="flow">
+      <div class="fbox bad" style="max-width:47%;"><div class="t">Still failing after retries</div><div class="s">401 / exhausted attempts &#8594; no retry</div></div>
+      <div class="farrow"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg><div class="lbl">pipeline<br>continues</div></div>
+      <div class="fbox bad" style="max-width:47%;"><div class="t">FAILED card + message</div><div class="s">stage mates unaffected &#183; UI renders it</div></div>
+    </div>
+    <div class="cap">One failing agent never aborts the debate</div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span><span class="n">06</span> Failure Ladder (worst case handled)</h2>
+  <li class="b"><span><b>One opening fails</b> &#8594; the other still runs; analysis proceeds on the surviving case.</span></li>
+  <li class="b"><span><b>Both openings fail</b> &#8594; stages 3&#8211;4 are skipped; a clear error is surfaced instead of a fake verdict.</span></li>
+  <li class="b"><span><b>Judge fails or replies garbage</b> &#8594; error panel; the four analyses remain available below it.</span></li>
+  <li class="b"><span><b>Unparseable verdict</b> &#8594; raw judge text shown as-is; the UI never fabricates content.</span></li>
+
+  <div class="pfoot"><span>QUORUM &#183; Five minds &#183; One verdict</span><span>Page 2 of 3</span></div>
+</div>
+
+<!-- ================= PAGE 3 ================= -->
+<div class="page">
+  <div class="phead">
+    <div class="mark">QUO<b>RUM</b></div>
+    <div class="no">Project Report &#183; 3 / 3</div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><span class="n">07</span> Agent Lifecycle (what the UI shows live)</h2>
+  <div class="diagram" style="padding: 12px 12px;">
+    <div class="lifecycle" style="justify-content:center;">
+      <span class="chip wait"><i></i>Waiting</span>
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#8A94A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <span class="chip think"><i></i>Thinking</span>
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#8A94A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <span class="chip done"><i></i>Completed</span>
+      <span style="width:6px"></span>
+      <span class="chip fail"><i></i>Failed</span>
+    </div>
+    <div class="cap">every status change re-renders the arena in real time</div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span><span class="n">08</span> The Arena Interface</h2>
+  <div class="twocol">
+    <div>
+      <li class="b"><span><b>Dark premium theme</b> with per-agent accent colors; glyphs animate per role while an agent thinks.</span></li>
+      <li class="b"><span><b>Typewriter reveal</b> &#8212; each argument appears as it is being typed, once.</span></li>
+      <li class="b"><span><b>Expand modal</b> to read any full argument; <b>copy</b> button on every card.</span></li>
+    </div>
+    <div>
+      <li class="b"><span><b>Verdict panel</b> with animated score bars, key disagreements, detected fallacies.</span></li>
+      <li class="b"><span><b>Settings sidebar</b>: per-agent key, connection test, model picker; keys never echoed.</span></li>
+      <li class="b"><span>Honors <span class="mono2">prefers-reduced-motion</span>; fully usable without JavaScript.</span></li>
+    </div>
+  </div>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span><span class="n">09</span> Verification</h2>
+  <li class="b"><span><b>Smoke suite (offline)</b> &#8212; 6 scenarios over a fake client: happy path, single failure, total failure, judge tolerance, parallelism timing.</span></li>
+  <li class="b"><span><b>Error-path tests</b> &#8212; missing key, 429-then-success, retry exhaustion, 401 fast-fail, empty content.</span></li>
+  <li class="b"><span><b>Settings tests</b> &#8212; override precedence, key resolution, model discovery parsing.</span></li>
+  <li class="b"><span><b>UI visual QA</b> &#8212; every card/verdict state rendered and screenshot-checked in a real browser.</span></li>
+
+  <h2 class="sec"><span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span><span class="n">10</span> Conclusion &amp; Future Work</h2>
+  <p class="body">Quorum shows that <b>model diversity is an architecture</b>: five providers contribute different reasoning styles to one structured outcome, while concurrency keeps latency low and graceful failure keeps the product usable under real-world API conditions.</p>
+  <li class="b"><span>Streaming tokens live into the arena cards.</span></li>
+  <li class="b"><span>Multi-round debate: agents rebut each other before the verdict.</span></li>
+  <li class="b"><span>Export a debate as PDF / shareable link; debate history and replay.</span></li>
+
+  <div style="margin-top:auto; background:var(--gold-soft); border:1px solid var(--gold); border-radius:9px; padding:8px 12px; display:flex; align-items:center; gap:9px;">
+    <span class="ic" style="width:20px; height:20px; color:var(--gold); flex:0 0 auto;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></span>
+    <div class="kv" style="line-height:1.5;"><b>Stack:</b> Python 3.12 &#183; Streamlit &#183; httpx (async) &#183; asyncio &#183; five OpenAI-compatible providers &nbsp;&#8212;&nbsp; <b>Repo:</b> github.com/Hamdayrabby/Quorum</div>
+  </div>
+
+  <div class="pfoot"><span>QUORUM &#183; Five minds &#183; One verdict</span><span>Page 3 of 3</span></div>
+</div>
+
+</body>
+</html>
