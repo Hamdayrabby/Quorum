@@ -9,3 +9,8 @@ textColor = "#E8EDF5"
 
 [browser]
 gatherUsageStats = false
+
+# The sidebar hosts the per-agent Settings panel — it must be reachable
+# without hunting for the (glitchy) expand control.
+[client]
+initialSidebarState = "expanded"

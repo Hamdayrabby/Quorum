@@ -51,8 +51,10 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         role=AgentRole.STRATEGIST,
         display_name="Strategist",
         provider="Google Gemini",
-        # Alternates: "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-2.0-flash"
-        model="gemini-2.5-flash",
+        # Live-verified 2026-11-05. Alternates: "models/gemini-flash-latest",
+        # "models/gemini-3.8-flash" (google's catalog moves fast; confirm via
+        # the settings model list).
+        model="models/gemini-3.6-flash",
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         api_key_env="GEMINI_API_KEY",
         temperature=0.7,
@@ -65,12 +67,10 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         role=AgentRole.CHALLENGER,
         display_name="Challenger",
         provider="River AI · DeepSeek",
-        # Exact ids should be confirmed via the settings model list
-        # (SAVE & TEST CONNECTION). Alternates: "deepseek-chat",
-        # "deepseek-reasoner" (model ids change often).
-        model="deepseek-4.1-flash",
-        # Direct-provider fallback: base_url="https://api.deepseek.com/v1",
-        # api_key_env="DEEPSEEK_API_KEY".
+        # Live-verified on River AI 2026-11-05; confirm via the settings
+        # model list (SAVE & TEST CONNECTION). Direct-provider fallback:
+        # base_url="https://api.deepseek.com/v1", api_key_env="DEEPSEEK_API_KEY".
+        model="deepseek-ai/DeepSeek-V4.1-Flash",
         base_url=_RIVER_BASE_URL,
         api_key_env="RIVER_API_KEY",
         temperature=0.7,
@@ -83,8 +83,10 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         role=AgentRole.RESEARCHER,
         display_name="Researcher",
         provider="Mistral AI",
-        # Alternates: "mistral-medium-latest", "mistral-small-latest"
-        model="mistral-large-latest",
+        # Note: "mistral-large-4" (free tier, 2026-11) answers with empty
+        # content over the OpenAI-compat endpoint; medium works but is
+        # rate-limited on free keys. Confirm via the settings model list.
+        model="mistral-medium-latest",
         base_url="https://api.mistral.ai/v1",
         api_key_env="MISTRAL_API_KEY",
         temperature=0.4,
@@ -97,16 +99,17 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         role=AgentRole.DEVILS_ADVOCATE,
         display_name="Devil's Advocate",
         provider="River AI · GLM",
-        # Exact ids should be confirmed via the settings model list
-        # (SAVE & TEST CONNECTION). Alternates: "glm-4.6", "glm-4-flash"
-        # (model ids change often).
-        model="glm-5.3-flash",
-        # Direct-provider fallback: base_url="https://api.z.ai/api/paas/v4/",
-        # api_key_env="GLM_API_KEY".
+        # Live-verified on River AI 2026-11-05; a reasoning model — keep the
+        # generous max_tokens below. Direct-provider fallback:
+        # base_url="https://api.z.ai/api/paas/v4/", api_key_env="GLM_API_KEY".
+        model="zai-org/GLM-5.3-Flash",
         base_url=_RIVER_BASE_URL,
         api_key_env="RIVER_API_KEY",
         temperature=0.8,
-        max_tokens=1500,
+        # GLM-5.3-Flash (and other reasoning models) spend tokens on hidden
+        # reasoning before the visible answer; a small budget yields empty
+        # content, so reasoning-model roles get generous headroom.
+        max_tokens=6000,
         accent="#3ED6B5",
         glyph="\u2b21",
         tagline="Attacks both sides and surfaces overlooked perspectives.",
@@ -115,12 +118,17 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         role=AgentRole.SUPREME_JUDGE,
         display_name="Supreme Judge",
         provider="NVIDIA NIM",
-        # Alternates: "nvidia/llama-3.3-nemotron-super-49b-v1.5"
-        model="nvidia/llama-3.3-nemotron-super-49b-v1",
+        # Live-verified 2026-11-05 (llama-3.3-nemotron-super-49b-v1 reached
+        # end of life; nemotron-3-super-120b-a12b is not entitled on free
+        # keys). Alternates: "nvidia/nemotron-3.5-lightning-30b-a3b",
+        # "nvidia/nemotron-3.5-super-vl-120b-a12b".
+        model="nvidia/nemotron-3-ultra-550b-a55b",
         base_url="https://integrate.api.nvidia.com/v1",
         api_key_env="NVIDIA_API_KEY",
         temperature=0.3,
-        max_tokens=3000,
+        # The judge parses into a strict JSON verdict; reasoning models on
+        # this seat need headroom for hidden reasoning plus the JSON payload.
+        max_tokens=8000,
         accent="#D4AF37",
         glyph="\u00a7",
         tagline="Scores both sides and delivers the final verdict.",
