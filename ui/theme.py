@@ -805,6 +805,57 @@ div[data-testid="stPills"] button {
   word-break: break-word;
 }
 
+/* ---------- Responsive layout ----------
+   Streamlit rows wrap by default but columns keep squeezing; giving them a
+   min-width under a breakpoint makes the five-card arena, the input zone and
+   the sidebar forms reflow instead of shrinking into unreadable slivers.
+   Streamlit 1.66 column testid is stColumn (not column). */
+
+@media (max-width: 1200px) {
+  .block-container { padding: 1.9rem 1.1rem 2.2rem; }
+  main [data-testid="stHorizontalBlock"] { row-gap: 14px; }
+  main [data-testid="stColumn"] { flex: 1 1 220px !important; min-width: 220px !important; }
+  .aw-wordmark { font-size: 30px; }
+}
+
+@media (max-width: 900px) {
+  .block-container { padding: 1.5rem 0.9rem 2rem; }
+  main [data-testid="stColumn"] { flex: 1 1 210px !important; min-width: 210px !important; }
+  .aw-header { padding-bottom: 12px; margin-bottom: 16px; }
+  .aw-vdivider, .aw-tagline { display: none; }
+  .aw-card { min-height: 260px; }
+  .aw-output { max-height: 240px; }
+  .aw-grid { grid-template-columns: 1fr; gap: 14px; }
+  .aw-stepper { margin-bottom: 16px; }
+  .aw-step-label { display: none; }
+  .aw-step-line { margin: 0 6px; min-width: 8px; }
+  .aw-winner { font-size: 20px; }
+  .aw-scores { max-width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .block-container { padding: 1.2rem 0.8rem 1.8rem; }
+  main [data-testid="stColumn"] { flex: 1 1 100% !important; min-width: 100% !important; }
+  .aw-header { flex-wrap: wrap; gap: 10px; }
+  .aw-wordmark { font-size: 25px; }
+  .aw-dots { display: none; }
+  .aw-brand { gap: 10px; }
+  .aw-card { min-height: 0; padding: 12px 12px 10px; }
+  .aw-card:hover { transform: none; }  /* no hover lift on touch layouts */
+  .aw-output { max-height: 300px; }
+  .aw-card-head .aw-avatar { width: 34px; height: 34px; }
+  .aw-verdict-head { gap: 8px; }
+  .aw-winner { font-size: 18px; letter-spacing: 0.02em; }
+  .aw-score-num { font-size: 15px; }
+  .aw-modal { padding: 10px; }
+  .aw-modal-panel { width: 100%; max-height: 92vh; border-radius: 12px; }
+  .aw-footer { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .aw-pill { flex-wrap: wrap; }
+  /* Mode pills: Streamlit keeps them on one line with overflow-x auto,
+     which clips the last option on phones; let them wrap instead. */
+  [data-testid="stButtonGroup"] [role="radiogroup"] { flex-wrap: wrap; row-gap: 8px; overflow-x: visible; }
+}
+
 /* --- accessibility: honor reduced-motion --- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
