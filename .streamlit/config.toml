@@ -10,7 +10,6 @@ textColor = "#E8EDF5"
 [browser]
 gatherUsageStats = false
 
-# The sidebar hosts the per-agent Settings panel — it must be reachable
-# without hunting for the (glitchy) expand control.
-[client]
-initialSidebarState = "expanded"
+# NOTE: Streamlit 1.66 has no initialSidebarState option (config warning if
+# set). The sidebar's visible-by-default behavior comes from the theme's
+# header CSS (expand arrow kept clickable) in ui/theme.py.

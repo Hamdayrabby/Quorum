@@ -38,8 +38,14 @@ CSS = """
   font-family: var(--font-body);
 }
 header[data-testid="stHeader"] { background: transparent; }
-header[data-testid="stHeader"] [data-testid="stToolbar"] { display: none; }
-#MainMenu, footer { visibility: hidden; }
+/* Keep the header toolbar rendered: it hosts the expand-sidebar arrow that
+   the Settings panel depends on when Streamlit restores a collapsed sidebar
+   from the browser's stored preference. Hide only the chrome we do not want. */
+header[data-testid="stHeader"] [data-testid="stToolbar"] { display: flex; }
+header[data-testid="stHeader"] [data-testid="stStatusWidget"],
+header[data-testid="stHeader"] [data-testid="stAppDeployButton"],
+header[data-testid="stHeader"] [data-testid="stMainMenuButton"] { display: none !important; }
+footer { visibility: hidden; }
 .block-container { padding: 2.2rem 1.4rem 2.5rem; max-width: 1280px; }
 .stMarkdown, .stMarkdown p { font-family: var(--font-body); color: var(--text-2); }
 
