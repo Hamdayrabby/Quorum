@@ -42,7 +42,7 @@ _GLYPH_MOTION: dict[str, str] = {
 _THINKING_VERBS: dict[str, tuple[str, ...]] = {
     "STRATEGIST": ("BUILDING CASE", "MARSHALLING EVIDENCE", "STEELMANNING"),
     "CHALLENGER": ("PROBING WEAKNESSES", "FORGING COUNTERS", "ATTACKING ASSUMPTIONS"),
-    "RESEARCHER": ("AUDITING CLAIMS", "TRACING SOURCES", "WEIGHING EVIDENCE"),
+    "RESEARCHER": ("SEARCHING THE WEB", "AUDITING CLAIMS", "TRACING SOURCES", "WEIGHING EVIDENCE"),
     "DEVILS_ADVOCATE": ("HUNTING BLIND SPOTS", "FLIPPING THE BOARD", "BENDING PERSPECTIVES"),
     "SUPREME_JUDGE": ("WEIGHING ARGUMENTS", "CROSS-CHECKING LOGIC", "DELIBERATING"),
 }
@@ -309,6 +309,21 @@ def render_agent_card(cfg: AgentConfig, result: AgentResult | None, index: int =
     else:
         body = ""
 
+    # Researcher sources: quiet clickable chips (host label) under the output.
+    sources_html = ""
+    if status is AgentStatus.COMPLETED and result is not None and result.sources:
+        chips = []
+        for title, url in result.sources[:5]:
+            host = url.split("//")[-1].split("/")[0].replace("www.", "")
+            chips.append(
+                f'<a class="aw-src" href="{escape(url, quote=True)}" target="_blank" '
+                f'rel="noopener noreferrer" title="{escape(title)}">{escape(host)}</a>'
+            )
+        sources_html = (
+            '<div class="aw-sources"><span class="aw-micro aw-sources-label">Sources</span>'
+            f'{"".join(chips)}</div>'
+        )
+
     has_content = bool(body)
     eq = (
         '<span class="aw-eq" title="Reasoning"><span></span><span></span><span></span></span>'
@@ -345,6 +360,7 @@ def render_agent_card(cfg: AgentConfig, result: AgentResult | None, index: int =
             <span class="aw-pill-dot"></span>{_status_tail(cfg.role.name, status)}
           </span>
           {body}
+          {sources_html}
           {foot}
         </div>
         """),

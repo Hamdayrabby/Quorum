@@ -39,6 +39,7 @@ class AgentResult:
     content: str = ""
     error: str | None = None
     latency_s: float = 0.0
+    sources: list[tuple[str, str]] = field(default_factory=list)  # (title, url)
 
     @property
     def ok(self) -> bool:

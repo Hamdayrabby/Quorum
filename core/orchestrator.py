@@ -24,6 +24,9 @@ from core.models import AgentResult, AgentRole, AgentStatus, DebateState, Verdic
 from core.settings import resolve_config
 
 ClientFactory = Callable[[AgentRole], LLMClient]
+# Async search fn (query -> list of {'title','url','content'}); injected so
+# tests can fake the web. None means the Researcher uses real Tavily search.
+SearchFactory = Callable[[AgentRole], Callable[[str], object] | None]
 
 _ROLE_AGENT_CLASSES: dict[AgentRole, type[BaseAgent]] = {
     AgentRole.STRATEGIST: StrategistAgent,
@@ -43,8 +46,13 @@ def _default_client_factory(role: AgentRole) -> LLMClient:
 class DebateOrchestrator:
     """Runs the debate and reports state after every status change."""
 
-    def __init__(self, client_factory: ClientFactory | None = None) -> None:
+    def __init__(
+        self,
+        client_factory: ClientFactory | None = None,
+        search_factory: SearchFactory | None = None,
+    ) -> None:
         self._client_factory = client_factory or _default_client_factory
+        self._search_factory = search_factory
 
     async def run_debate(
         self,
@@ -57,6 +65,13 @@ class DebateOrchestrator:
             role: agent_cls(AGENT_CONFIGS[role], self._client_factory(role))
             for role, agent_cls in _ROLE_AGENT_CLASSES.items()
         }
+        if self._search_factory is not None:
+            search = self._search_factory(AgentRole.RESEARCHER)
+            agents[AgentRole.RESEARCHER] = ResearcherAgent(
+                AGENT_CONFIGS[AgentRole.RESEARCHER],
+                self._client_factory(AgentRole.RESEARCHER),
+                search=search,
+            )
         state = DebateState(topic=topic, mode=mode)
         for role, cfg in AGENT_CONFIGS.items():
             state.results[role] = AgentResult(

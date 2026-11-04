@@ -106,6 +106,28 @@ def make_clients(
     return clients
 
 
+_FAKE_SOURCES = [
+    {"title": "Pew Research: remote work outcomes", "url": "https://pewresearch.org/remote", "content": "Survey of 10k workers..."},
+    {"title": "Field experiment on productivity", "url": "https://example.org/productivity", "content": "RCT finds +13% output..."},
+]
+
+
+async def fake_search(query: str) -> list[dict]:
+    return _FAKE_SOURCES
+
+
+async def failing_search(query: str) -> list[dict]:
+    raise ApiError("Tavily", 500, "simulated search outage")
+
+
+def make_orchestrator(clients: dict[AgentRole, FakeClient], search=None) -> DebateOrchestrator:
+    """Orchestrator with FakeClients and an injected (never real) search fn."""
+    return DebateOrchestrator(
+        client_factory=lambda role: clients[role],
+        search_factory=(lambda role: search) if search is not None else None,
+    )
+
+
 def scenario(name: str):
     def decorate(func):
         def run() -> None:
@@ -128,7 +150,7 @@ def scenario(name: str):
 async def scenario_happy_path() -> None:
     clients = make_clients()
     updates: list[DebateState] = []
-    orchestrator = DebateOrchestrator(client_factory=lambda role: clients[role])
+    orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(_TOPIC, _MODE, on_update=updates.append)
 
     for role in AgentRole:
@@ -137,7 +159,16 @@ async def scenario_happy_path() -> None:
         assert result.status is AgentStatus.COMPLETED, f"{role.value}: {result.status.value}"
         assert result.content, f"{role.value}: empty content"
         assert result.latency_s > 0, f"{role.value}: latency not recorded"
-        assert clients[role].calls == 1, f"{role.value}: {clients[role].calls} client calls"
+        expected_calls = 2 if role is AgentRole.RESEARCHER else 1  # query-gen + audit
+        assert clients[role].calls == expected_calls, f"{role.value}: {clients[role].calls} client calls"
+    researcher = state.get(AgentRole.RESEARCHER)
+    assert researcher is not None and researcher.sources == [
+        ("Pew Research: remote work outcomes", "https://pewresearch.org/remote"),
+        ("Field experiment on productivity", "https://example.org/productivity"),
+    ], researcher.sources
+    assert "https://pewresearch.org/remote" in clients[AgentRole.RESEARCHER].last_user, (
+        "evidence not fed into the audit prompt"
+    )
     assert state.completed_count() == 5
     assert state.judge_error is None
 
@@ -155,7 +186,7 @@ async def scenario_happy_path() -> None:
 @scenario("2. one opening fails: strategist survives, judge still delivers")
 async def scenario_one_opening_fails() -> None:
     clients = make_clients(failures={AgentRole.CHALLENGER})
-    orchestrator = DebateOrchestrator(client_factory=lambda role: clients[role])
+    orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(_TOPIC, _MODE)
 
     strategist = state.get(AgentRole.STRATEGIST)
@@ -173,7 +204,7 @@ async def scenario_one_opening_fails() -> None:
 @scenario("3. both openings fail: stages 3-4 skipped, judge_error set, nothing escapes")
 async def scenario_both_openings_fail() -> None:
     clients = make_clients(failures={AgentRole.STRATEGIST, AgentRole.CHALLENGER})
-    orchestrator = DebateOrchestrator(client_factory=lambda role: clients[role])
+    orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(_TOPIC, _MODE)
 
     for role in (AgentRole.STRATEGIST, AgentRole.CHALLENGER):
@@ -192,7 +223,7 @@ async def scenario_both_openings_fail() -> None:
 async def scenario_prose_wrapped_verdict() -> None:
     wrapped = "Here is my verdict:\n\n```json\n" + _JUDGE_REPLY + "\n```\n\nGood debate."
     clients = make_clients(judge_reply=wrapped)
-    orchestrator = DebateOrchestrator(client_factory=lambda role: clients[role])
+    orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(_TOPIC, _MODE)
 
     verdict = state.verdict
@@ -205,7 +236,7 @@ async def scenario_prose_wrapped_verdict() -> None:
 @scenario("5. judge returns garbage: parse_ok False, raw_text kept, judge_error None")
 async def scenario_garbage_verdict() -> None:
     clients = make_clients(judge_reply="I cannot decide.")
-    orchestrator = DebateOrchestrator(client_factory=lambda role: clients[role])
+    orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(_TOPIC, _MODE)
 
     verdict = state.verdict
@@ -222,7 +253,7 @@ async def scenario_concurrency() -> None:
     clients = make_clients(delay_s=0.2)
     stamps: list[tuple[float, DebateState]] = []
     started = time.perf_counter()
-    orchestrator = DebateOrchestrator(client_factory=lambda role: clients[role])
+    orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(
         _TOPIC, _MODE, on_update=lambda snapshot: stamps.append((time.perf_counter(), snapshot))
     )
@@ -246,6 +277,20 @@ async def scenario_concurrency() -> None:
     assert elapsed < 0.35, f"stage 2 took {elapsed:.3f}s - agents ran serially"
 
 
+@scenario("7. search API dies: researcher degrades to reasoning-only, sources empty")
+async def scenario_search_fails() -> None:
+    clients = make_clients()
+    orchestrator = make_orchestrator(clients, search=failing_search)
+    state = await orchestrator.run_debate(_TOPIC, _MODE)
+
+    researcher = state.get(AgentRole.RESEARCHER)
+    assert researcher is not None and researcher.ok, researcher
+    assert researcher.sources == [], researcher.sources
+    assert "AUDIT" in researcher.content
+    judge = state.get(AgentRole.SUPREME_JUDGE)
+    assert judge is not None and judge.ok
+
+
 def main() -> None:
     scenario_happy_path()
     scenario_one_opening_fails()
@@ -253,6 +298,7 @@ def main() -> None:
     scenario_prose_wrapped_verdict()
     scenario_garbage_verdict()
     scenario_concurrency()
+    scenario_search_fails()
     if _FAILURES:
         print(f"PIPELINE SMOKE RED ({len(_FAILURES)} failing: {', '.join(_FAILURES)})")
         raise SystemExit(1)

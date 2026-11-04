@@ -65,10 +65,27 @@ def challenger_prompt(topic: str, mode: str, pro_argument: str) -> tuple[str, st
     return system, user
 
 
+def researcher_query_prompt(topic: str, mode: str) -> tuple[str, str]:
+    """Step 1 of the Researcher's tool loop: two web-search queries, one per line."""
+    system = (
+        "You prepare web searches for a debate fact-checker. Output EXACTLY two search "
+        "queries that would surface the strongest real-world evidence for and against the "
+        "proposition (statistics, studies, official data). One query per line, no numbering, "
+        "no quotes, no commentary - queries only."
+    )
+    user = f'Topic: "{topic}"\nDebate mode: {mode}'
+    return system, user
+
+
 def researcher_prompt(
-    topic: str, mode: str, pro_argument: str, con_argument: str
+    topic: str, mode: str, pro_argument: str, con_argument: str, evidence: str = ""
 ) -> tuple[str, str]:
-    """The Researcher audits both openings; it owns no side and debates nothing."""
+    """The Researcher audits both openings; it owns no side and debates nothing.
+
+    When ``evidence`` is non-empty it carries numbered web results ([1]..[n]) from
+    the Tavily tool loop; the audit must then cite them and say what they settle
+    or fail to settle.
+    """
     system = (
         "You are the Researcher on a formal debate panel, a rigorous fact-checker and "
         "argument auditor. You own NO side: you do not debate, you audit. Analyze both "
@@ -77,9 +94,22 @@ def researcher_prompt(
         "each disputed point. Be surgical and specific; when you flag a claim, quote or "
         f"cite its exact text. {_mode_directive(mode)} {_STYLE}"
     )
+    evidence_block = ""
+    if evidence.strip():
+        system += (
+            " You ran web searches before writing this audit. Ground it in the numbered "
+            "evidence below: cite results as [1], [2] inline, state plainly what each "
+            "cited source supports or contradicts, and call out opening claims the "
+            "evidence does not cover. Do not invent sources beyond the list."
+        )
+        evidence_block = (
+            "Web evidence gathered before this audit:\n\n"
+            f"{evidence.strip()}\n\n"
+        )
     user = (
         f'Topic: "{topic}"\n'
         f"Debate mode: {mode}\n\n"
+        f"{evidence_block}"
         "Opening FOR the proposition:\n"
         f"{pro_argument}\n\n"
         "Opening AGAINST the proposition:\n"

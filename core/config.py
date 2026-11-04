@@ -90,7 +90,11 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         base_url="https://api.mistral.ai/v1",
         api_key_env="MISTRAL_API_KEY",
         temperature=0.4,
-        max_tokens=1500,
+        # The seat often carries a reasoning model (nemotron-lightning via the
+        # settings override, GLM on River) whose hidden thinking shares this
+        # budget — a full audit can reason for thousands of tokens before the
+        # first visible word, so this cap stays generous (a cap is not a cost).
+        max_tokens=8000,
         accent="#FF8A4C",
         glyph="\u25ce",
         tagline="Audits both openings for unsupported claims and weak logic.",

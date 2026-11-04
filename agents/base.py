@@ -26,11 +26,17 @@ class BaseAgent:
         self._client = client
 
     async def run(self, system: str, user: str) -> AgentResult:
-        """Execute one completion; never raises, always returns a terminal result.
+        """Execute one completion; never raises, always returns a terminal result."""
+        return await self.run_sequence((system, user))
 
-        Any ``AgentWarsError`` (which covers ConfigError, ApiError and
-        ResponseFormatError) becomes a FAILED result carrying the error text;
-        an empty reply counts as a failure too.
+    async def run_sequence(self, *steps: tuple[str, str]) -> AgentResult:
+        """Execute 1..N completions under one timing/error envelope.
+
+        Each step is a ``(system, user)`` pair run in order; the LAST step's
+        reply becomes ``result.content``. Tool-using agents (the Researcher's
+        search loop) use this so multi-call work still gets the never-raise
+        contract: any ``AgentWarsError`` becomes a FAILED result, an empty
+        final reply counts as a failure too.
         """
         result = AgentResult(
             role=self._cfg.role,
@@ -39,7 +45,9 @@ class BaseAgent:
         )
         start = time.perf_counter()
         try:
-            content = await self._client.complete(system, user)
+            content = ""
+            for system, user in steps:
+                content = await self._client.complete(system, user)
             if not content.strip():
                 raise ResponseFormatError(f"{self._cfg.provider} returned empty content")
             result.status = AgentStatus.COMPLETED

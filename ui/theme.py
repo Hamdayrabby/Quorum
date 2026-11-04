@@ -225,14 +225,43 @@ footer { visibility: hidden; }
 .aw-pill.is-failed .aw-pill-dot { background: var(--err); }
 .aw-output {
   flex: 1 1 auto;
-  max-height: 300px;
-  overflow-y: auto;
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-2);
   white-space: pre-wrap;
   padding-right: 6px;
+  /* Condensed card view: long audits clamp to five lines; the expand modal
+     copies textContent (ui/interactions.py), so it still shows the full text. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
 }
+/* Agent sources: quiet clickable host chips under the Researcher output. */
+.aw-sources {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -2px;
+}
+.aw-sources-label { margin-right: 2px; }
+.aw-src {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  text-decoration: none;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.aw-src:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .aw-err { font-size: 12px; line-height: 1.55; color: var(--err); white-space: pre-wrap; }
 .aw-card-foot { margin-top: auto; display: flex; justify-content: flex-end; min-height: 14px; }
 .aw-latency { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; color: var(--text-3); }

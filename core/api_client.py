@@ -232,3 +232,49 @@ def tavily_check(
     if isinstance(used, int) and isinstance(limit, int):
         return f"connected - {used}/{limit} credits used"
     return "connected"
+
+
+async def tavily_search(
+    api_key: str,
+    query: str,
+    max_results: int = 3,
+    timeout_s: float = 20.0,
+) -> list[dict]:
+    """Async Tavily ``POST /search``; returns trimmed ``[{'title','url','content'}]``.
+
+    Used by the Researcher's tool loop. Raises ApiError on auth/transport
+    failures and ResponseFormatError on an unexpected body; the key never
+    appears in messages (auth is a header).
+    """
+    if not api_key.strip():
+        raise ApiError("Tavily", None, "no API key configured")
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_s)) as client:
+            response = await client.post(
+                "https://api.tavily.com/search",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={"query": query, "max_results": max_results, "search_depth": "basic"},
+            )
+    except httpx.TransportError as exc:  # includes TimeoutException
+        raise ApiError("Tavily", None, f"transport failure: {exc}") from exc
+    if not response.is_success:
+        raise ApiError("Tavily", response.status_code, _provider_error_message(response))
+    try:
+        data = response.json()
+    except ValueError:
+        raise ResponseFormatError("Tavily returned an unexpected response shape") from None
+    entries = data.get("results") if isinstance(data, dict) else None
+    if not isinstance(entries, list):
+        raise ResponseFormatError("Tavily returned no results list")
+    trimmed: list[dict] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        trimmed.append(
+            {
+                "title": str(item.get("title") or "").strip(),
+                "url": str(item.get("url") or "").strip(),
+                "content": str(item.get("content") or "").strip()[:400],
+            }
+        )
+    return [item for item in trimmed if item["url"]]
