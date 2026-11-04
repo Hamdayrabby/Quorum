@@ -45,6 +45,11 @@ class LLMClient:
         self._max_retries = max_retries
         self._transport = _transport
 
+    @property
+    def model(self) -> str:
+        """Model id of this client's config."""
+        return self._cfg.model
+
     async def complete(self, system: str, user: str, *, temperature: float | None = None) -> str:
         """Send one chat completion and return the assistant content string.
 
@@ -278,3 +283,35 @@ async def tavily_search(
             }
         )
     return [item for item in trimmed if item["url"]]
+
+
+_TRANSIENT_STATUSES = (429, 500, 502, 503, 504)
+
+
+class FallbackClient:
+    """Primary model first; on a transient failure re-asks the fallback model.
+
+    Wraps two ``LLMClient``s behind the same ``complete`` contract so agents
+    stay unaware of failover. Only 429/5xx trigger the fallback (those are
+    the provider-side outages a different model can actually survive); other
+    errors — bad key, malformed request — surface immediately. ``used_model``
+    records which model answered, for the UI chip and tests.
+    """
+
+    def __init__(self, primary: LLMClient, fallback: LLMClient, fallback_model: str) -> None:
+        self._primary = primary
+        self._fallback = fallback
+        self.fallback_model = fallback_model
+        self.used_model: str | None = None
+
+    async def complete(self, system: str, user: str, *, temperature: float | None = None) -> str:
+        try:
+            out = await self._primary.complete(system, user, temperature=temperature)
+            self.used_model = self._primary.model
+            return out
+        except ApiError as exc:
+            if exc.status_code not in _TRANSIENT_STATUSES:
+                raise
+        out = await self._fallback.complete(system, user, temperature=temperature)
+        self.used_model = self.fallback_model
+        return out

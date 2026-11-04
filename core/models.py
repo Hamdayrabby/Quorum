@@ -67,6 +67,7 @@ class Verdict:
     fallacies: list[str] = field(default_factory=list)
     raw_text: str = ""
     parse_ok: bool = True
+    verified: bool = False  # True after the judge's self-check pass re-read all four answers
 
 
 @dataclass

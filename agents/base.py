@@ -52,6 +52,9 @@ class BaseAgent:
                 raise ResponseFormatError(f"{self._cfg.provider} returned empty content")
             result.status = AgentStatus.COMPLETED
             result.content = content
+            used = getattr(self._client, "used_model", None)
+            if used:
+                result.model_name = used
         except AgentWarsError as exc:
             result.status = AgentStatus.FAILED
             result.error = str(exc)

@@ -300,6 +300,16 @@ footer { visibility: hidden; }
   letter-spacing: 0.02em;
 }
 .aw-winner .aw-gold { color: var(--gold); }
+.aw-verified {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
 .aw-scores { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 4px; max-width: 560px; }
 .aw-score-row { display: flex; align-items: center; gap: 12px; }
 .aw-score-label { width: 72px; flex: 0 0 auto; }

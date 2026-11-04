@@ -123,6 +123,40 @@ def researcher_prompt(
     return system, user
 
 
+def judge_selfcheck_prompt(
+    topic: str,
+    mode: str,
+    pro_argument: str,
+    con_argument: str,
+    analysis: str,
+    draft_json: str,
+) -> tuple[str, str]:
+    """Judge verification pass: re-read ALL four answers, correct the draft."""
+    system = (
+        "You are the same Supreme Judge, now in a VERIFICATION PASS. You drafted a verdict, "
+        "and the four panel answers are reproduced below in full. Re-read every answer and "
+        "audit your own draft: (a) every claim you attributed to an answer must actually "
+        "appear there; (b) the scores must stay consistent with the evidence audit; (c) the "
+        "declared winner must follow from the two scores; (d) no answer may have been "
+        "ignored. Correct any error you find. Reply with ONLY the corrected JSON object in "
+        "the exact same schema - no markdown fence, no prose. If the draft survives your "
+        "audit unchanged, return it as-is."
+    )
+    user = (
+        f'Topic: "{topic}"\n'
+        f"Debate mode: {mode}\n\n"
+        "Opening FOR the proposition:\n"
+        f"{pro_argument}\n\n"
+        "Opening AGAINST the proposition:\n"
+        f"{con_argument}\n\n"
+        "Evidence audit & Devil's advocate (combined analysis):\n"
+        f"{analysis}\n\n"
+        "Your draft verdict to verify:\n"
+        f"{draft_json}"
+    )
+    return system, user
+
+
 def devils_advocate_prompt(
     topic: str, mode: str, pro_argument: str, con_argument: str
 ) -> tuple[str, str]:

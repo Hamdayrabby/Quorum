@@ -7,7 +7,7 @@ and API key resolution. ``.env`` is loaded once at import time so every layer
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dataclass_replace
 
 from dotenv import load_dotenv
 
@@ -140,6 +140,27 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
 }
 
 DEBATE_MODES: list[str] = ["Technology", "Science", "Education", "Business", "Society"]
+
+# Per-seat model fallback for TRANSIENT provider failures (429/5xx after the
+# client's own retries). Every entry is a live-verified model, so a seat that
+# gets throttled re-asks a different model instead of failing the debate.
+# Permanent errors (bad key, malformed request) never trigger a fallback.
+_FALLBACKS: dict[AgentRole, dict] = {
+    AgentRole.STRATEGIST: {"provider": "River AI · GLM", "model": "GLM-5.3",
+                           "base_url": _RIVER_BASE_URL, "api_key_env": "RIVER_API_KEY"},
+    AgentRole.CHALLENGER: {"provider": "River AI · GLM", "model": "zai-org/GLM-5.3-Flash",
+                           "base_url": _RIVER_BASE_URL, "api_key_env": "RIVER_API_KEY"},
+    AgentRole.RESEARCHER: {"provider": "NVIDIA NIM", "model": "nvidia/nemotron-3.5-bolt-e4b",
+                           "base_url": "https://integrate.api.nvidia.com/v1", "api_key_env": "NVIDIA_API_KEY"},
+    AgentRole.DEVILS_ADVOCATE: {"provider": "River AI · DeepSeek", "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+                                "base_url": _RIVER_BASE_URL, "api_key_env": "RIVER_API_KEY"},
+    AgentRole.SUPREME_JUDGE: {"provider": "NVIDIA NIM", "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+                              "base_url": "https://integrate.api.nvidia.com/v1", "api_key_env": "NVIDIA_API_KEY",
+                              "max_tokens": 8000},
+}
+FALLBACK_CONFIGS: dict[AgentRole, AgentConfig] = {
+    role: dataclass_replace(AGENT_CONFIGS[role], **overrides) for role, overrides in _FALLBACKS.items()
+}
 
 TIMEOUT_S: float = 90.0
 MAX_RETRIES: int = 2

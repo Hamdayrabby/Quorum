@@ -18,8 +18,8 @@ from agents.devils_advocate import DevilsAdvocateAgent
 from agents.researcher import ResearcherAgent
 from agents.strategist import StrategistAgent
 from agents.supreme_judge import SupremeJudgeAgent
-from core.api_client import LLMClient
-from core.config import AGENT_CONFIGS
+from core.api_client import FallbackClient, LLMClient
+from core.config import AGENT_CONFIGS, FALLBACK_CONFIGS
 from core.models import AgentResult, AgentRole, AgentStatus, DebateState, Verdict
 from core.settings import resolve_config
 
@@ -49,10 +49,28 @@ class DebateOrchestrator:
     def __init__(
         self,
         client_factory: ClientFactory | None = None,
+        fallback_client_factory: ClientFactory | None = None,
         search_factory: SearchFactory | None = None,
     ) -> None:
         self._client_factory = client_factory or _default_client_factory
+        self._fallback_client_factory = fallback_client_factory
         self._search_factory = search_factory
+
+    def _client_for(self, role: AgentRole) -> LLMClient | FallbackClient:
+        """Primary client, wrapped with a model fallback when one is configured.
+
+        ``fallback_client_factory`` exists for tests; without it the fallback
+        client is a real ``LLMClient`` over ``FALLBACK_CONFIGS[role]``.
+        """
+        primary = self._client_factory(role)
+        fallback_cfg = FALLBACK_CONFIGS.get(role)
+        if fallback_cfg is None:
+            return primary
+        if self._fallback_client_factory is not None:
+            fallback_client = self._fallback_client_factory(role)
+        else:
+            fallback_client = LLMClient(fallback_cfg)
+        return FallbackClient(primary, fallback_client, fallback_cfg.model)
 
     async def run_debate(
         self,
@@ -62,14 +80,14 @@ class DebateOrchestrator:
     ) -> DebateState:
         """Execute the full pipeline; always returns a final ``DebateState``."""
         agents = {
-            role: agent_cls(AGENT_CONFIGS[role], self._client_factory(role))
+            role: agent_cls(AGENT_CONFIGS[role], self._client_for(role))
             for role, agent_cls in _ROLE_AGENT_CLASSES.items()
         }
         if self._search_factory is not None:
             search = self._search_factory(AgentRole.RESEARCHER)
             agents[AgentRole.RESEARCHER] = ResearcherAgent(
                 AGENT_CONFIGS[AgentRole.RESEARCHER],
-                self._client_factory(AgentRole.RESEARCHER),
+                self._client_for(AgentRole.RESEARCHER),
                 search=search,
             )
         state = DebateState(topic=topic, mode=mode)

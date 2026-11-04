@@ -1,10 +1,16 @@
-"""Supreme Judge agent: structured verdict over both sides and the analysis."""
+"""Supreme Judge agent: structured verdict over both sides and the analysis.
+
+Two-phase by design: draft the verdict, then a VERIFICATION PASS re-reads all
+four panel answers against the draft and returns the corrected JSON. If the
+verification call or its parse fails, the draft verdict still ships (marked
+unverified) — the judge never blocks the pipeline on its own second opinion.
+"""
 
 from __future__ import annotations
 
 from agents.base import BaseAgent, parse_verdict
 from core.models import AgentResult, Verdict
-from prompts.agent_prompts import judge_prompt
+from prompts.agent_prompts import judge_prompt, judge_selfcheck_prompt
 
 
 class SupremeJudgeAgent(BaseAgent):
@@ -26,7 +32,21 @@ class SupremeJudgeAgent(BaseAgent):
         companion result carries the error.
         """
         system, user = judge_prompt(topic, mode, pro_argument, con_argument, analysis)
-        result = await self.run(system, user)
-        if not result.ok:
-            return None, result
-        return parse_verdict(result.content), result
+        draft = await self.run(system, user)
+        if not draft.ok:
+            return None, draft
+        verdict = parse_verdict(draft.content)
+        if not verdict.parse_ok:
+            return verdict, draft
+
+        # Verification pass: the judge re-reads all four answers with its own
+        # draft in hand and corrects any misattribution or score inconsistency.
+        check_system, check_user = judge_selfcheck_prompt(
+            topic, mode, pro_argument, con_argument, analysis, draft.content
+        )
+        final = await self.run(check_system, check_user)
+        final_verdict = parse_verdict(final.content)
+        if final.ok and final_verdict.parse_ok:
+            final_verdict.verified = True
+            return final_verdict, final
+        return verdict, draft

@@ -16,6 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from core.config import FALLBACK_CONFIGS  # noqa: E402
 from core.exceptions import ApiError  # noqa: E402
 from core.models import AgentRole, AgentStatus, DebateState  # noqa: E402
 from core.orchestrator import DebateOrchestrator  # noqa: E402
@@ -65,10 +66,20 @@ _FAILURES: list[str] = []
 class FakeClient:
     """Duck-typed ``LLMClient`` stand-in: canned reply, optional delay or failure."""
 
-    def __init__(self, reply: str, *, delay_s: float = 0.0, fail: bool = False) -> None:
+    def __init__(
+        self,
+        reply: str,
+        *,
+        delay_s: float = 0.0,
+        fail: bool = False,
+        fail_status: int = 500,
+        model: str | None = None,
+    ) -> None:
         self.reply = reply
         self.delay_s = delay_s
         self.fail = fail
+        self.fail_status = fail_status
+        self.model = model
         self.calls = 0
         self.last_user = ""
 
@@ -78,7 +89,7 @@ class FakeClient:
         if self.delay_s > 0:
             await asyncio.sleep(self.delay_s)
         if self.fail:
-            raise ApiError("FakeProvider", 500, "simulated provider outage")
+            raise ApiError("FakeProvider", self.fail_status, "simulated provider outage")
         return self.reply
 
 
@@ -96,13 +107,16 @@ def make_clients(
     delay_s: float = 0.0,
     failures: set[AgentRole] | None = None,
     judge_reply: str | None = None,
+    fail_status: int = 500,
 ) -> dict[AgentRole, FakeClient]:
     failures = failures or set()
     clients: dict[AgentRole, FakeClient] = {}
     for role, reply in _BASE_REPLIES.items():
         if role is AgentRole.SUPREME_JUDGE and judge_reply is not None:
             reply = judge_reply
-        clients[role] = FakeClient(reply, delay_s=delay_s, fail=role in failures)
+        clients[role] = FakeClient(
+            reply, delay_s=delay_s, fail=role in failures, fail_status=fail_status
+        )
     return clients
 
 
@@ -120,10 +134,17 @@ async def failing_search(query: str) -> list[dict]:
     raise ApiError("Tavily", 500, "simulated search outage")
 
 
-def make_orchestrator(clients: dict[AgentRole, FakeClient], search=None) -> DebateOrchestrator:
+def make_orchestrator(
+    clients: dict[AgentRole, FakeClient],
+    search=None,
+    fallback_clients: dict[AgentRole, FakeClient] | None = None,
+) -> DebateOrchestrator:
     """Orchestrator with FakeClients and an injected (never real) search fn."""
     return DebateOrchestrator(
         client_factory=lambda role: clients[role],
+        fallback_client_factory=(
+            (lambda role: fallback_clients[role]) if fallback_clients else None
+        ),
         search_factory=(lambda role: search) if search is not None else None,
     )
 
@@ -159,7 +180,7 @@ async def scenario_happy_path() -> None:
         assert result.status is AgentStatus.COMPLETED, f"{role.value}: {result.status.value}"
         assert result.content, f"{role.value}: empty content"
         assert result.latency_s > 0, f"{role.value}: latency not recorded"
-        expected_calls = 2 if role is AgentRole.RESEARCHER else 1  # query-gen + audit
+        expected_calls = {AgentRole.RESEARCHER: 2, AgentRole.SUPREME_JUDGE: 2}.get(role, 1)
         assert clients[role].calls == expected_calls, f"{role.value}: {clients[role].calls} client calls"
     researcher = state.get(AgentRole.RESEARCHER)
     assert researcher is not None and researcher.sources == [
@@ -175,6 +196,7 @@ async def scenario_happy_path() -> None:
     verdict = state.verdict
     assert verdict is not None, "verdict missing"
     assert verdict.parse_ok is True
+    assert verdict.verified is True, "self-check pass did not mark the verdict"
     assert verdict.winner == "PRO", verdict.winner
     assert verdict.pro_score == 87, verdict.pro_score
     assert verdict.con_score == 72, verdict.con_score
@@ -185,7 +207,7 @@ async def scenario_happy_path() -> None:
 
 @scenario("2. one opening fails: strategist survives, judge still delivers")
 async def scenario_one_opening_fails() -> None:
-    clients = make_clients(failures={AgentRole.CHALLENGER})
+    clients = make_clients(failures={AgentRole.CHALLENGER}, fail_status=400)
     orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(_TOPIC, _MODE)
 
@@ -203,7 +225,9 @@ async def scenario_one_opening_fails() -> None:
 
 @scenario("3. both openings fail: stages 3-4 skipped, judge_error set, nothing escapes")
 async def scenario_both_openings_fail() -> None:
-    clients = make_clients(failures={AgentRole.STRATEGIST, AgentRole.CHALLENGER})
+    clients = make_clients(
+        failures={AgentRole.STRATEGIST, AgentRole.CHALLENGER}, fail_status=400
+    )
     orchestrator = make_orchestrator(clients, search=fake_search)
     state = await orchestrator.run_debate(_TOPIC, _MODE)
 
@@ -291,6 +315,27 @@ async def scenario_search_fails() -> None:
     assert judge is not None and judge.ok
 
 
+@scenario("8. 429 on a seat: FallbackClient re-asks the fallback model, chip updates")
+async def scenario_fallback() -> None:
+    clients = make_clients(failures={AgentRole.STRATEGIST}, fail_status=429)
+    fallbacks = make_clients()
+    orchestrator = DebateOrchestrator(
+        client_factory=lambda role: clients[role],
+        fallback_client_factory=lambda role: fallbacks[role],
+        search_factory=lambda role: fake_search,
+    )
+    state = await orchestrator.run_debate(_TOPIC, _MODE)
+
+    strategist = state.get(AgentRole.STRATEGIST)
+    assert strategist is not None and strategist.ok, strategist
+    assert strategist.model_name == FALLBACK_CONFIGS[AgentRole.STRATEGIST].model, (
+        strategist.model_name
+    )
+    assert clients[AgentRole.STRATEGIST].calls == 1, "primary must be tried first"
+    assert fallbacks[AgentRole.STRATEGIST].calls == 1, "fallback must answer after 429"
+    assert state.completed_count() == 5
+
+
 def main() -> None:
     scenario_happy_path()
     scenario_one_opening_fails()
@@ -299,6 +344,7 @@ def main() -> None:
     scenario_garbage_verdict()
     scenario_concurrency()
     scenario_search_fails()
+    scenario_fallback()
     if _FAILURES:
         print(f"PIPELINE SMOKE RED ({len(_FAILURES)} failing: {', '.join(_FAILURES)})")
         raise SystemExit(1)

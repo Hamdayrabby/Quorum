@@ -393,6 +393,9 @@ def _render_verdict_panel(verdict: Verdict) -> None:
 
     pro_width = min(100, max(0, verdict.pro_score))
     con_width = min(100, max(0, verdict.con_score))
+    verified_chip = (
+        '<span class="aw-verified">SELF-CHECKED</span>' if verdict.verified else ""
+    )
 
     cells: list[str] = []
     for i, (title, text) in enumerate(
@@ -432,6 +435,7 @@ def _render_verdict_panel(verdict: Verdict) -> None:
           <div class="aw-verdict-head">
             <span class="aw-micro aw-micro-gold">Verdict</span>
             <span class="aw-winner">{winner_html}</span>
+            {verified_chip}
           </div>
           <div class="aw-scores">
             <div class="aw-score-row">
