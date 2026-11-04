@@ -392,7 +392,6 @@ def render_footer() -> None:
     st.markdown(
         _stable_html("""
         <div class="aw-footer">
-          <span class="aw-micro">QUORUM &#8212; Advanced AI course project</span>
           <span class="aw-micro">Five providers &#183; OpenAI-compatible endpoints</span>
         </div>
         """),
