@@ -15,6 +15,7 @@ a header), and provider error text.
 """
 from __future__ import annotations
 
+import os
 from html import escape
 
 import streamlit as st
@@ -25,7 +26,6 @@ from core.exceptions import AgentWarsError, ConfigError
 from core.models import AgentRole
 from core.settings import (
     get_tavily_key,
-    has_credentials,
     resolve_config,
     save_override,
     save_tavily_key,
@@ -52,6 +52,15 @@ def render_sidebar() -> None:
         _render_tavily_settings()
 
 
+def _key_source(cfg: AgentConfig) -> str | None:
+    """Where the agent's key currently comes from: 'saved', 'env', or None."""
+    if str(cfg.api_key or "").strip():
+        return "saved"
+    if os.environ.get(cfg.api_key_env, "").strip():
+        return "env"
+    return None
+
+
 def _render_agent_settings(cfg: AgentConfig) -> None:
     """One agent expander: form (base URL + key), status pill, model dropdown."""
     role = cfg.role
@@ -64,7 +73,9 @@ def _render_agent_settings(cfg: AgentConfig) -> None:
         st.session_state[key_field] = ""
 
     resolved = resolve_config(role)
-    with st.expander(f"{cfg.glyph} {cfg.display_name}"):
+    source = _key_source(resolved)
+    label = f"{cfg.glyph} {cfg.display_name}" + ("   &#10003;" if source else "")
+    with st.expander(label):
         with st.form(key=f"aw_form_{role.value}", border=False):
             base_url = st.text_input(
                 "Base URL",
@@ -76,12 +87,28 @@ def _render_agent_settings(cfg: AgentConfig) -> None:
                 value="",  # ALWAYS blank; never prefill or render a key
                 key=key_field,
                 type="password",
-                placeholder="saved (session/env)" if has_credentials(resolved) else "not set",
+                placeholder=(
+                    "key active (env / saved) · type to replace"
+                    if source
+                    else "paste your key here"
+                ),
             )
             submitted = st.form_submit_button("SAVE & TEST CONNECTION", use_container_width=True)
         if submitted:
             _handle_submit(role, base_url)
 
+        if source:
+            st.markdown(
+                '<div class="aw-key-chip is-ok">&#10003; key added &#183; '
+                f"{source}</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="aw-key-chip is-missing">&#10007; no key &#8212; '
+                f"paste one above or set {escape(cfg.api_key_env)}</div>",
+                unsafe_allow_html=True,
+            )
         _render_connection_result(role)
 
 
@@ -201,18 +228,33 @@ def _render_tavily_settings() -> None:
     if st.session_state.pop(clear_flag, False) and key_field in st.session_state:
         st.session_state[key_field] = ""
 
-    with st.expander(f"{_TAVILY_GLYPH} Search \u00b7 Tavily"):
+    with st.expander(f"{_TAVILY_GLYPH} Search \u00b7 Tavily" + ("   &#10003;" if get_tavily_key() else "")):
         with st.form(key="aw_form_tavily", border=False):
             st.text_input(
                 "Tavily API key",
                 value="",  # ALWAYS blank; never prefill or render a key
                 key=key_field,
                 type="password",
-                placeholder="saved (session/env)" if get_tavily_key() else "not set",
+                placeholder=(
+                    "key active (env / saved) · type to replace"
+                    if get_tavily_key()
+                    else "paste your key here"
+                ),
             )
             submitted = st.form_submit_button("SAVE & TEST CONNECTION", use_container_width=True)
         if submitted:
             _handle_tavily_submit(key_field, clear_flag)
+        if get_tavily_key():
+            st.markdown(
+                '<div class="aw-key-chip is-ok">&#10003; key added</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="aw-key-chip is-missing">&#10007; no key &#8212; '
+                "paste one above or set TAVILY_API_KEY</div>",
+                unsafe_allow_html=True,
+            )
         _render_tavily_result()
 
 

@@ -101,7 +101,20 @@ def main() -> None:
     picked = ui.render_input_zone(running=running, disabled_reason=disabled_reason)
 
     stepper_ph = st.empty()
-    card_phs = [col.empty() for col in st.columns(len(_ROLES), gap="small")]
+    # Card layout follows the pipeline's own grouping instead of five cramped
+    # equal columns (5-in-a-row yields ~240px cards on a wide screen — below
+    # the readability floor for text-heavy cards; dashboards standardize on
+    # 2-4 column grids with >=300px cards). Row 1 = the two opening agents,
+    # row 2 = the analysis pair + judge, mirroring stages 2-4.
+    openings_row = st.columns(2, gap="medium")
+    analysis_row = st.columns(3, gap="medium")
+    card_phs = [
+        openings_row[0].empty(),
+        openings_row[1].empty(),
+        analysis_row[0].empty(),
+        analysis_row[1].empty(),
+        analysis_row[2].empty(),
+    ]
     verdict_ph = st.empty()
 
     if state is not None:

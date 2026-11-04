@@ -786,6 +786,46 @@ div[data-testid="stPills"] button {
   font-size: 12px;
 }
 
+/* --- form polish: Streamlit shows a "Press Enter to submit form" hint inside
+   form widgets after typing; it overlaps the field in the dark theme, and the
+   SAVE button already communicates submission. Hide it and keep fields
+   single-line, with a clear focus ring and readable placeholders. --- */
+[data-testid="stSidebar"] [data-testid="stForm"] small,
+[data-testid="stSidebar"] [data-testid="stForm"] [data-testid="stFormWidgetHelp"],
+[data-testid="stSidebar"] [data-testid="stForm"] [class*="FormWidgetHelp"],
+[data-testid="stSidebar"] [data-testid="stForm"] .stFormSubmitHint { display: none !important; }
+[data-testid="stSidebar"] [data-testid="stForm"] [data-testid="stTextInput"] { margin-bottom: 3px; }
+[data-testid="stSidebar"] .stTextInput input::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+}
+[data-testid="stSidebar"] input[type="password"] { font-family: var(--font-mono); }
+[data-testid="stSidebar"] .stTextInput input:focus,
+[data-testid="stSidebar"] .stTextInput input:focus-visible {
+  border-color: var(--info) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--info) 45%, transparent) !important;
+  outline: none !important;
+}
+
+/* --- key-active chip: a visible confirmation that a key exists (env or
+   saved), since the write-only field intentionally never echoes it --- */
+.aw-key-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 2px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.aw-key-chip.is-ok { color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.aw-key-chip.is-missing { color: var(--err); border: 1px solid color-mix(in srgb, var(--err) 45%, transparent); background: color-mix(in srgb, var(--err) 10%, transparent); }
+
 /* Scroll insurance for the settings sidebar. The content can grow very tall
    (six agents x forms + an 85-model picker), and the model picker is a
    React Aria combobox whose virtual dropdown renders as a fixed overlay.
