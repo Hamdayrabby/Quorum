@@ -1,4 +1,4 @@
-"""Pure render functions for the Agent Wars arena.
+"""Pure render functions for the Quorum arena.
 
 Every function turns typed input (``AgentConfig``, ``AgentResult``,
 ``DebateState``) into finished HTML via ``st.markdown`` and nothing else:
@@ -79,7 +79,7 @@ def render_header() -> None:
         _stable_html(f"""
         <div class="aw-header">
           <div class="aw-brand">
-            <span class="aw-wordmark">AGENT<span class="aw-gold">&#8202;WARS</span></span>
+            <span class="aw-wordmark">QUO<span class="aw-gold">RUM</span></span>
             <span class="aw-vdivider"></span>
             <span class="aw-micro aw-tagline">FIVE MINDS. ONE VERDICT.</span>
           </div>
@@ -392,7 +392,7 @@ def render_footer() -> None:
     st.markdown(
         _stable_html("""
         <div class="aw-footer">
-          <span class="aw-micro">AGENT WARS &#8212; Advanced AI course project</span>
+          <span class="aw-micro">QUORUM &#8212; Advanced AI course project</span>
           <span class="aw-micro">Five providers &#183; OpenAI-compatible endpoints</span>
         </div>
         """),

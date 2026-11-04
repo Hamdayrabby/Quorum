@@ -1,4 +1,4 @@
-# Agent Wars
+# Quorum
 
 Five LLM agents from five different providers argue a proposition, audit each other, and a judge agent delivers a scored verdict. Built as an Advanced AI course project to demonstrate a multi-provider, multi-agent pipeline with graceful failure handling.
 

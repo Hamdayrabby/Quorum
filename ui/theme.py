@@ -1,4 +1,4 @@
-"""Design tokens and stylesheet for the Agent Wars arena.
+"""Design tokens and stylesheet for the Quorum arena.
 
 This module owns the single source of truth for the dark dashboard look:
 design tokens as CSS custom properties, the component classes referenced by
@@ -703,7 +703,7 @@ def inject() -> None:
 def page_config() -> None:
     """Streamlit page settings; must run before any other st command."""
     st.set_page_config(
-        page_title="Agent Wars",
+        page_title="Quorum",
         page_icon=None,
         layout="wide",
         initial_sidebar_state="collapsed",

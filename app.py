@@ -1,4 +1,4 @@
-"""Agent Wars - Streamlit front end.
+"""Quorum - Streamlit front end.
 
 Slim wiring only: page setup, theme injection, sidebar settings, missing-key
 banner, and the single run flow. All rendering lives in ``ui/components.py``
