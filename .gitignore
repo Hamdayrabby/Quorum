@@ -1,0 +1,15 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Tooling
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
