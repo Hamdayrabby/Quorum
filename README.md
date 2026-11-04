@@ -67,7 +67,7 @@ Each agent needs its own provider key in `.env`:
 | `RIVER_API_KEY`    | River AI (hosts the DeepSeek and GLM agents)         | River AI console                   |
 | `RIVER_BASE_URL`   | River AI base, default `https://api.river.ai/v1/`    | -                                  |
 | `NVIDIA_API_KEY`   | NVIDIA                                               | https://build.nvidia.com           |
-| `TAVILY_API_KEY`   | reserved - not yet used by the pipeline              | -                                  |
+| `TAVILY_API_KEY`   | Tavily (optional; sidebar Settings panel too)        | https://app.tavily.com             |
 
 The Challenger and Devil's Advocate both route through River AI (`RIVER_API_KEY`), which serves OpenAI-compatible DeepSeek and GLM models. The original direct-provider endpoints (`api.deepseek.com`, `api.z.ai` with `DEEPSEEK_API_KEY` / `GLM_API_KEY`) are kept as comments in `core/config.py` for fallback.
 
@@ -82,6 +82,8 @@ Keys can also be entered in the UI without touching `.env`. Open the sidebar (SE
 3. Overrides live in `.agent_settings.json` (gitignored) and win over the base config; keys can still come from `.env` instead.
 
 A key typed into the sidebar is write-only: the field is never prefilled or rendered back - it only shows whether a key is saved.
+
+Below the five agents there is an optional **Search · Tavily** panel: save a Tavily key and **SAVE & TEST CONNECTION** verifies it against the live API (free `GET /usage`, falling back to a minimal search call). The key is stored in the same gitignored `.agent_settings.json` under `integrations.tavily`; saved keys take precedence over `TAVILY_API_KEY` in `.env`. Tavily is not yet consumed by the debate pipeline - it is reserved for researcher web-search evidence.
 
 ## Run
 

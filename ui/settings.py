@@ -19,13 +19,20 @@ from html import escape
 
 import streamlit as st
 
-from core.api_client import fetch_models
+from core.api_client import fetch_models, tavily_check
 from core.config import AGENT_CONFIGS, AgentConfig, get_api_key
 from core.exceptions import AgentWarsError, ConfigError
 from core.models import AgentRole
-from core.settings import has_credentials, resolve_config, save_override
+from core.settings import (
+    get_tavily_key,
+    has_credentials,
+    resolve_config,
+    save_override,
+    save_tavily_key,
+)
 
 _ERROR_SNIPPET_CHARS = 120
+_TAVILY_GLYPH = "\u25c7"
 
 
 def render_sidebar() -> None:
@@ -42,6 +49,7 @@ def render_sidebar() -> None:
         )
         for cfg in AGENT_CONFIGS.values():
             _render_agent_settings(cfg)
+        _render_tavily_settings()
 
 
 def _render_agent_settings(cfg: AgentConfig) -> None:
@@ -175,3 +183,83 @@ def _snippet(text: str) -> str:
     if len(text) > _ERROR_SNIPPET_CHARS:
         return text[: _ERROR_SNIPPET_CHARS - 3] + "..."
     return text
+
+
+def _render_tavily_settings() -> None:
+    """Optional Tavily search key: save + live connectivity check.
+
+    Same security posture as the agent expanders: password field is never
+    prefilled, results only ever carry a status + provider text.
+    """
+    key_field = "aw_key_tavily"
+    clear_flag = "aw_keyclear_tavily"
+
+    if st.session_state.pop(clear_flag, False) and key_field in st.session_state:
+        st.session_state[key_field] = ""
+
+    with st.expander(f"{_TAVILY_GLYPH} Search \u00b7 Tavily"):
+        with st.form(key="aw_form_tavily", border=False):
+            st.text_input(
+                "Tavily API key",
+                value="",  # ALWAYS blank; never prefill or render a key
+                key=key_field,
+                type="password",
+                placeholder="saved (session/env)" if get_tavily_key() else "not set",
+            )
+            submitted = st.form_submit_button("SAVE & TEST CONNECTION", use_container_width=True)
+        if submitted:
+            _handle_tavily_submit(key_field, clear_flag)
+        _render_tavily_result()
+
+
+def _handle_tavily_submit(key_field: str, clear_flag: str) -> None:
+    """Save the typed key (if any), verify it against Tavily, store the outcome."""
+    conn_key = "aw_conn_tavily"
+    typed = str(st.session_state.get(key_field, "")).strip()
+
+    def fail(message: str) -> None:
+        st.session_state[conn_key] = {"ok": False, "error": _snippet(message), "detail": None}
+        st.session_state[clear_flag] = bool(typed)
+        st.rerun()
+
+    try:
+        if typed:
+            save_tavily_key(typed)
+        key = get_tavily_key()
+    except ConfigError as exc:
+        fail(str(exc))
+        return
+    if not key:
+        fail("no Tavily key: set TAVILY_API_KEY or save one here")
+        return
+    try:
+        with st.spinner("Testing Tavily..."):
+            detail = tavily_check(key)
+    except AgentWarsError as exc:  # never contains the key
+        fail(str(exc))
+        return
+    st.session_state[conn_key] = {"ok": True, "error": None, "detail": detail}
+    st.session_state[clear_flag] = bool(typed)
+    st.rerun()
+
+
+def _render_tavily_result() -> None:
+    """Status line under the Tavily form."""
+    conn = st.session_state.get("aw_conn_tavily")
+    if conn is None:
+        return
+    if conn.get("ok"):
+        detail = escape(str(conn.get("detail") or "connected"))
+        st.markdown(
+            '<div class="aw-status is-ok">'
+            f'<span class="aw-status-dot"></span>CONNECTED</div>'
+            f'<div class="aw-sidebar-help">{detail}</div>',
+            unsafe_allow_html=True,
+        )
+        return
+    st.markdown(
+        '<div class="aw-status is-err">'
+        '<span class="aw-status-dot"></span>CONNECTION FAILED</div>'
+        f'<div class="aw-status-err-text">{escape(str(conn.get("error") or "connection failed"))}</div>',
+        unsafe_allow_html=True,
+    )

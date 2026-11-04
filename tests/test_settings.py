@@ -195,11 +195,70 @@ def case_fetch_models() -> None:
         raise AssertionError("expected ResponseFormatError for an empty model list")
 
 
+@settings_case("5. tavily: save/get precedence, blank ignored, integrations survive agent saves, check via MockTransport")
+def case_tavily() -> None:
+    from core.api_client import tavily_check
+    from core.settings import get_tavily_key, save_tavily_key
+
+    os.environ.pop("TAVILY_API_KEY", None)
+    assert get_tavily_key() == "", "no key anywhere -> empty string"
+    save_tavily_key("  tvly-test-123  ")
+    assert get_tavily_key() == "tvly-test-123", get_tavily_key()
+    # Blank values never overwrite a stored key.
+    save_tavily_key("   ")
+    assert get_tavily_key() == "tvly-test-123"
+    # Env is the fallback when no stored key exists; stored wins when both.
+    os.environ["TAVILY_API_KEY"] = "tvly-env-999"
+    assert get_tavily_key() == "tvly-test-123", "stored key must beat env"
+    # REGRESSION: an agent override save must preserve the integrations section.
+    save_override(AgentRole.STRATEGIST, model="gemini-test")
+    assert get_tavily_key() == "tvly-test-123", "agent save erased the Tavily key"
+    raw = json.loads(settings_module.OVERRIDES_FILE.read_text(encoding="utf-8"))
+    assert raw["integrations"]["tavily"]["api_key"] == "tvly-test-123", raw
+    assert "strategist" in raw, raw
+    os.environ.pop("TAVILY_API_KEY", None)
+
+    # Usage endpoint happy path.
+    def handler_usage(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/usage", str(request.url)
+        assert request.headers.get("Authorization") == "Bearer tvly-test-123"
+        return httpx.Response(200, json={"key": {"usage": 12, "limit": 1000}})
+
+    assert (
+        tavily_check("tvly-test-123", _transport=httpx.MockTransport(handler_usage))
+        == "connected - 12/1000 credits used"
+    )
+
+    # Old API surface: /usage 404 -> falls back to a minimal search call.
+    def handler_fallback(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/usage":
+            return httpx.Response(404, json={"detail": "not found"})
+        assert request.url.path == "/search", str(request.url)
+        return httpx.Response(200, json={"results": []})
+
+    assert (
+        tavily_check("tvly-test-123", _transport=httpx.MockTransport(handler_fallback))
+        == "connected - search API reachable"
+    )
+
+    # Bad key surfaces as ApiError with the status code.
+    def handler_401(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"detail": "invalid api key"})
+
+    try:
+        tavily_check("tvly-test-123", _transport=httpx.MockTransport(handler_401))
+    except ApiError as exc:
+        assert exc.status_code == 401, str(exc)
+    else:
+        raise AssertionError("expected ApiError on 401")
+
+
 def main() -> None:
     case_roundtrip()
     case_precedence()
     case_api_key()
     case_fetch_models()
+    case_tavily()
     if _FAILURES:
         print(f"SETTINGS TESTS RED ({len(_FAILURES)} failing: {', '.join(_FAILURES)})")
         raise SystemExit(1)

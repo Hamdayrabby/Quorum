@@ -180,3 +180,55 @@ def fetch_models(
     if not ids:
         raise ResponseFormatError(f"{_DISCOVERY_PROVIDER} returned no models")
     return ids
+
+
+def tavily_check(
+    api_key: str,
+    timeout_s: float = 15.0,
+    *,
+    _transport: httpx.BaseTransport | None = None,
+) -> str:
+    """Verify a Tavily key and return a short human status string.
+
+    Tries the free ``GET /usage`` endpoint first; when that route is not
+    available (older API surface), falls back to a minimal
+    ``POST /search`` (costs one credit). Raises ApiError on auth/transport
+    failures; the message never contains the key (auth is a header).
+    ``_transport`` is a test seam.
+    """
+    if not api_key.strip():
+        raise ApiError("Tavily", None, "no API key configured")
+    headers = {"Authorization": f"Bearer {api_key}"}
+    base = "https://api.tavily.com"
+    try:
+        with httpx.Client(timeout=httpx.Timeout(timeout_s), transport=_transport) as client:
+            response = client.get(f"{base}/usage", headers=headers)
+            if response.status_code in (404, 405):
+                response = client.post(
+                    f"{base}/search",
+                    headers=headers,
+                    json={"query": "connectivity check", "max_results": 1, "search_depth": "basic"},
+                )
+                response.raise_for_status()
+                return "connected - search API reachable"
+            if not response.is_success:
+                raise ApiError("Tavily", response.status_code, _provider_error_message(response))
+            data = response.json()
+    except httpx.TransportError as exc:  # includes TimeoutException
+        raise ApiError("Tavily", None, f"transport failure: {exc}") from exc
+    except ValueError:
+        raise ResponseFormatError("Tavily returned an unexpected response shape") from None
+
+    # Build a status from whatever usage fields the account reports.
+    key_info = data.get("key") if isinstance(data, dict) else None
+    account = data.get("account") if isinstance(data, dict) else None
+    used = limit = None
+    if isinstance(key_info, dict):
+        used = key_info.get("usage")
+        limit = key_info.get("limit")
+    if used is None and isinstance(account, dict):
+        used = account.get("plan_usage")
+        limit = account.get("plan_limit")
+    if isinstance(used, int) and isinstance(limit, int):
+        return f"connected - {used}/{limit} credits used"
+    return "connected"

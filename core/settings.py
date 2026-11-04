@@ -7,12 +7,15 @@ root (cwd) and is gitignored. Storage only: no HTTP happens in this module
 (model discovery lives in ``core.api_client.fetch_models``).
 
 File shape: ``{"<role_value>": {"base_url": "...", "api_key": "...",
-"model": "..."}}``. Load failures return ``{}`` so a corrupt file can never
-kill the app; write failures raise ``ConfigError`` with short messages.
+"model": "..."}, "integrations": {"tavily": {"api_key": "..."}}}``.
+Non-agent sections are preserved verbatim when agent overrides are written.
+Load failures return ``{}`` so a corrupt file can never kill the app; write
+failures raise ``ConfigError`` with short messages.
 """
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 
@@ -23,14 +26,12 @@ from core.models import AgentRole
 OVERRIDES_FILE = Path(".agent_settings.json")  # relative to project root / cwd
 
 _FIELDS = ("base_url", "api_key", "model")
+_INTEGRATIONS = "integrations"
+_TAVILY_ENV = "TAVILY_API_KEY"
 
 
-def load_overrides() -> dict[str, dict[str, str]]:
-    """Read the overrides file; ``{}`` when missing, unreadable, or corrupt.
-
-    Only the three known fields are kept and only for string values, so a
-    hand-edited file cannot inject unexpected keys into ``resolve_config``.
-    """
+def _load_raw() -> dict:
+    """Whole settings document; ``{}`` when missing, unreadable, or corrupt."""
     try:
         raw = OVERRIDES_FILE.read_text(encoding="utf-8")
     except (FileNotFoundError, OSError, ValueError):
@@ -39,10 +40,18 @@ def load_overrides() -> dict[str, dict[str, str]]:
         data = json.loads(raw)
     except ValueError:
         return {}
-    if not isinstance(data, dict):
-        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def load_overrides() -> dict[str, dict[str, str]]:
+    """Read the agent role overrides; ``{}`` when missing, unreadable, or corrupt.
+
+    Only the three known fields are kept and only for string values, so a
+    hand-edited file cannot inject unexpected keys into ``resolve_config``.
+    Non-agent sections (e.g. ``integrations``) are ignored here.
+    """
     result: dict[str, dict[str, str]] = {}
-    for role_value, entry in data.items():
+    for role_value, entry in _load_raw().items():
         if not isinstance(role_value, str) or not isinstance(entry, dict):
             continue
         clean = {
@@ -64,7 +73,7 @@ def save_override(
     never overwrites or clears a stored key - use ``clear_override`` for that).
     Raises ConfigError when the file cannot be written.
     """
-    data = load_overrides()
+    data = _load_raw()
     entry = dict(data.get(role.value, {}))
     if base_url is not None:
         entry["base_url"] = base_url.strip()
@@ -84,7 +93,7 @@ def clear_override(role: AgentRole, field: str) -> None:
     """Remove one stored override field for ``role`` (and the entry when empty)."""
     if field not in _FIELDS:
         raise ConfigError(f"unknown settings field: {field}")
-    data = load_overrides()
+    data = _load_raw()
     entry = data.get(role.value)
     if entry is None:
         return
@@ -114,6 +123,28 @@ def has_credentials(cfg: AgentConfig) -> bool:
         return bool(get_api_key(cfg))
     except ConfigError:
         return False
+
+
+def get_tavily_key() -> str:
+    """Tavily key: settings override first, then ``TAVILY_API_KEY``; ``""`` if neither."""
+    entry = _load_raw().get(_INTEGRATIONS, {})
+    stored = entry.get("tavily", {}) if isinstance(entry, dict) else {}
+    key = stored.get("api_key") if isinstance(stored, dict) else None
+    if isinstance(key, str) and key.strip():
+        return key.strip()
+    return os.environ.get(_TAVILY_ENV, "").strip()
+
+
+def save_tavily_key(api_key: str) -> None:
+    """Persist a Tavily key in the settings file (blank is ignored, like agents)."""
+    if not api_key.strip():
+        return
+    data = _load_raw()
+    section = data.get(_INTEGRATIONS)
+    section = dict(section) if isinstance(section, dict) else {}
+    section["tavily"] = {"api_key": api_key.strip()}
+    data[_INTEGRATIONS] = section
+    _write(data)
 
 
 def _write(data: dict[str, dict[str, str]]) -> None:
