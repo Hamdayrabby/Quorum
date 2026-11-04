@@ -1,5 +1,6 @@
 # Secrets
 .env
+.agent_settings.json
 
 # Python
 __pycache__/

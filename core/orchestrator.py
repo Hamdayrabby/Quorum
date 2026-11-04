@@ -21,6 +21,7 @@ from agents.supreme_judge import SupremeJudgeAgent
 from core.api_client import LLMClient
 from core.config import AGENT_CONFIGS
 from core.models import AgentResult, AgentRole, AgentStatus, DebateState, Verdict
+from core.settings import resolve_config
 
 ClientFactory = Callable[[AgentRole], LLMClient]
 
@@ -36,7 +37,7 @@ _ANALYSIS_SEPARATOR = "\n\n---\n\n"
 
 
 def _default_client_factory(role: AgentRole) -> LLMClient:
-    return LLMClient(AGENT_CONFIGS[role])
+    return LLMClient(resolve_config(role))
 
 
 class DebateOrchestrator:

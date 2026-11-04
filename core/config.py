@@ -19,7 +19,12 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class AgentConfig:
-    """Static settings for one pipeline agent and its LLM provider."""
+    """Static settings for one pipeline agent and its LLM provider.
+
+    ``api_key`` is the runtime override entered in the sidebar settings;
+    ``None``/empty means "fall back to the ``api_key_env`` environment
+    variable" (see ``get_api_key``).
+    """
 
     role: AgentRole
     display_name: str  # e.g. "Strategist"
@@ -32,6 +37,13 @@ class AgentConfig:
     accent: str  # hex color, used by the UI
     glyph: str  # single unicode symbol for the UI card
     tagline: str  # one-line responsibility, shown on the UI card
+    api_key: str | None = None  # runtime override; None -> env lookup
+
+
+RIVER_DEFAULT_BASE_URL = "https://api.river.ai/v1/"
+# River AI routes the challenger-side agents through one OpenAI-compatible
+# base; the deployment can redirect it via the RIVER_BASE_URL env var.
+_RIVER_BASE_URL = os.environ.get("RIVER_BASE_URL", "").strip() or RIVER_DEFAULT_BASE_URL
 
 
 AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
@@ -52,11 +64,15 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
     AgentRole.CHALLENGER: AgentConfig(
         role=AgentRole.CHALLENGER,
         display_name="Challenger",
-        provider="DeepSeek",
-        # Alternates: "deepseek-reasoner" (model ids change often)
-        model="deepseek-chat",
-        base_url="https://api.deepseek.com/v1",
-        api_key_env="DEEPSEEK_API_KEY",
+        provider="River AI · DeepSeek",
+        # Exact ids should be confirmed via the settings model list
+        # (SAVE & TEST CONNECTION). Alternates: "deepseek-chat",
+        # "deepseek-reasoner" (model ids change often).
+        model="deepseek-4.1-flash",
+        # Direct-provider fallback: base_url="https://api.deepseek.com/v1",
+        # api_key_env="DEEPSEEK_API_KEY".
+        base_url=_RIVER_BASE_URL,
+        api_key_env="RIVER_API_KEY",
         temperature=0.7,
         max_tokens=1500,
         accent="#9B7BFF",
@@ -80,11 +96,15 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
     AgentRole.DEVILS_ADVOCATE: AgentConfig(
         role=AgentRole.DEVILS_ADVOCATE,
         display_name="Devil's Advocate",
-        provider="Z.ai (GLM)",
-        # Alternates: "glm-4.6", "glm-4-flash" (model ids change often)
+        provider="River AI · GLM",
+        # Exact ids should be confirmed via the settings model list
+        # (SAVE & TEST CONNECTION). Alternates: "glm-4.6", "glm-4-flash"
+        # (model ids change often).
         model="glm-5.3-flash",
-        base_url="https://api.z.ai/api/paas/v4/",
-        api_key_env="GLM_API_KEY",
+        # Direct-provider fallback: base_url="https://api.z.ai/api/paas/v4/",
+        # api_key_env="GLM_API_KEY".
+        base_url=_RIVER_BASE_URL,
+        api_key_env="RIVER_API_KEY",
         temperature=0.8,
         max_tokens=1500,
         accent="#3ED6B5",
@@ -114,11 +134,14 @@ MAX_RETRIES: int = 2
 
 
 def get_api_key(cfg: AgentConfig) -> str:
-    """Return the provider API key for ``cfg`` from the environment.
+    """Return the API key for ``cfg``: the runtime override when set, else the environment.
 
-    Raises ConfigError naming the missing environment variable when the key
-    is absent or blank.
+    A non-empty ``cfg.api_key`` (sidebar settings override) wins over the
+    environment. Raises ConfigError naming the missing environment variable
+    when neither source provides a usable key.
     """
+    if isinstance(cfg.api_key, str) and cfg.api_key.strip():
+        return cfg.api_key.strip()
     key = os.environ.get(cfg.api_key_env, "").strip()
     if not key:
         raise ConfigError(

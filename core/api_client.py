@@ -5,6 +5,9 @@ endpoint that speaks the OpenAI wire format, so one client class serves the
 whole pipeline. Retry policy: exponential backoff (1s, 2s + jitter) only on
 HTTP 429, 5xx, and transport-level failures; other 4xx fail fast with the
 provider's error message.
+
+``fetch_models`` is the sync companion used by the settings UI for the live
+connection test (the debate pipeline itself stays async).
 """
 from __future__ import annotations
 
@@ -19,6 +22,7 @@ from core.exceptions import ApiError, ResponseFormatError
 _BACKOFF_BASE_S = 1.0
 _BACKOFF_JITTER_S = 0.5
 _ERROR_SNIPPET_CHARS = 300
+_DISCOVERY_PROVIDER = "model discovery"
 
 
 class LLMClient:
@@ -83,7 +87,7 @@ class LLMClient:
                     await asyncio.sleep(self._backoff(attempt))
                     continue
                 raise ApiError(
-                    self._cfg.provider, response.status_code, self._error_message(response)
+                    self._cfg.provider, response.status_code, _provider_error_message(response)
                 )
 
     def _backoff(self, attempt: int) -> float:
@@ -108,16 +112,71 @@ class LLMClient:
         return content
 
     def _error_message(self, response: httpx.Response) -> str:
-        """Best-effort provider error message from the response body."""
-        try:
-            data = response.json()
-        except ValueError:
-            return response.text[:_ERROR_SNIPPET_CHARS] or "no response body"
-        if isinstance(data, dict):
-            error = data.get("error")
-            if isinstance(error, dict) and isinstance(error.get("message"), str):
-                return error["message"]
-            for field in ("message", "detail"):
-                if isinstance(data.get(field), str):
-                    return data[field]
+        return _provider_error_message(response)
+
+
+def _provider_error_message(response: httpx.Response) -> str:
+    """Best-effort provider error message from the response body."""
+    try:
+        data = response.json()
+    except ValueError:
         return response.text[:_ERROR_SNIPPET_CHARS] or "no response body"
+    if isinstance(data, dict):
+        error = data.get("error")
+        if isinstance(error, dict) and isinstance(error.get("message"), str):
+            return error["message"]
+        for field in ("message", "detail"):
+            if isinstance(data.get(field), str):
+                return data[field]
+    return response.text[:_ERROR_SNIPPET_CHARS] or "no response body"
+
+
+def fetch_models(
+    base_url: str,
+    api_key: str,
+    timeout_s: float = 15.0,
+    *,
+    _transport: httpx.AsyncBaseTransport | httpx.BaseTransport | None = None,
+) -> list[str]:
+    """Sync ``GET {base_url}models`` with Bearer auth; returns sorted model ids.
+
+    Used by the settings UI for the live connection test. No retries and a
+    short timeout so the UI stays snappy. Raises ApiError on transport/HTTP
+    failures and ResponseFormatError when the response carries no usable
+    model list. ``_transport`` is a test seam (``httpx.MockTransport``).
+    """
+    url = base_url.rstrip("/") + "/models"
+    headers = {"Authorization": f"Bearer {api_key}"}
+    try:
+        with httpx.Client(timeout=httpx.Timeout(timeout_s), transport=_transport) as client:
+            response = client.get(url, headers=headers)
+    except httpx.TransportError as exc:  # includes TimeoutException
+        raise ApiError(_DISCOVERY_PROVIDER, None, f"transport failure: {exc}") from exc
+    if not response.is_success:
+        raise ApiError(
+            _DISCOVERY_PROVIDER, response.status_code, _provider_error_message(response)
+        )
+    try:
+        data = response.json()
+    except ValueError:
+        raise ResponseFormatError(
+            f"{_DISCOVERY_PROVIDER} returned an unexpected response shape"
+        ) from None
+    if isinstance(data, dict):
+        entries = data.get("data")
+    elif isinstance(data, list):  # tolerate a bare JSON list of model objects
+        entries = data
+    else:
+        entries = None
+    ids: list[str] = []
+    if isinstance(entries, list):
+        ids = sorted(
+            {
+                item["id"]
+                for item in entries
+                if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"].strip()
+            }
+        )
+    if not ids:
+        raise ResponseFormatError(f"{_DISCOVERY_PROVIDER} returned no models")
+    return ids
