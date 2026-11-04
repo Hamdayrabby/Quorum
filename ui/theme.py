@@ -68,11 +68,14 @@ footer { visibility: hidden; }
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 6px 2px 16px;
+  padding: 4px 2px 14px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
-.aw-brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.aw-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.aw-brand-mark { display: inline-flex; color: var(--gold); flex: 0 0 auto; }
+.aw-brand-mark svg { width: 26px; height: 26px; display: block; transition: transform 0.4s ease; }
+.aw-brand-mark:hover svg { transform: rotate(180deg); }
 .aw-wordmark {
   font-family: var(--font-display);
   font-weight: 700;
@@ -100,7 +103,7 @@ footer { visibility: hidden; }
 .aw-banner-body { font-size: 13px; line-height: 1.55; color: var(--text-2); margin-top: 4px; }
 
 /* ---------- Stage stepper ---------- */
-.aw-stepper { display: flex; align-items: center; margin: 6px 0 22px; }
+.aw-stepper { display: flex; align-items: center; margin: 10px 0 20px; }
 .aw-step { display: flex; align-items: center; flex: 1 1 0; min-width: 0; }
 .aw-step:last-child { flex: 0 0 auto; }
 .aw-step-dot {
@@ -161,7 +164,7 @@ footer { visibility: hidden; }
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px 14px 12px;
-  min-height: 340px;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -175,7 +178,7 @@ footer { visibility: hidden; }
   border-radius: 12px 12px 0 0;
   background: var(--accent);
 }
-.aw-card-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.aw-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .aw-glyph { color: var(--accent); font-size: 18px; line-height: 1; flex: 0 0 auto; }
 .aw-name {
   font-family: var(--font-body);
@@ -200,7 +203,7 @@ footer { visibility: hidden; }
   border-radius: 6px;
   padding: 4px 8px;
 }
-.aw-card-tag { min-height: 26px; }
+.aw-card-tag { min-height: 26px; margin: 2px 0 4px; }
 .aw-pill {
   display: inline-flex;
   align-items: center;
@@ -441,7 +444,7 @@ div[data-testid="stPills"] button {
 .aw-card:hover .aw-glyph { transform: scale(1.14); }
 
 /* --- card: waiting (queued agents stay faintly alive) --- */
-.aw-card.is-waiting { opacity: 0.88; }
+.aw-card.is-waiting { opacity: 0.88; min-height: 232px; }
 .aw-card.is-waiting .aw-glyph { opacity: 0.55; animation: aw-float 3.6s ease-in-out infinite; }
 .aw-card.is-waiting .aw-card-line { opacity: 0.45; }
 
@@ -508,7 +511,8 @@ div[data-testid="stPills"] button {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
 }
-.aw-avatar-glyph { font-size: 17px; line-height: 1; transform-origin: center; transition: transform 0.18s ease; }
+.aw-avatar-glyph { display: inline-flex; transform-origin: center; transition: transform 0.18s ease; }
+.aw-avatar-glyph svg { width: 20px; height: 20px; display: block; }
 .aw-card:hover .aw-avatar-glyph { transform: scale(1.12); }
 
 .aw-avatar-ring,
@@ -813,7 +817,7 @@ div[data-testid="stPills"] button {
 
 @media (max-width: 1200px) {
   .block-container { padding: 1.9rem 1.1rem 2.2rem; }
-  main [data-testid="stHorizontalBlock"] { row-gap: 14px; }
+  main [data-testid="stHorizontalBlock"] { row-gap: 16px; }
   main [data-testid="stColumn"] { flex: 1 1 220px !important; min-width: 220px !important; }
   .aw-wordmark { font-size: 30px; }
 }
@@ -823,14 +827,24 @@ div[data-testid="stPills"] button {
   main [data-testid="stColumn"] { flex: 1 1 210px !important; min-width: 210px !important; }
   .aw-header { padding-bottom: 12px; margin-bottom: 16px; }
   .aw-vdivider, .aw-tagline { display: none; }
-  .aw-card { min-height: 260px; }
+  .aw-card { min-height: 240px; }
+  .aw-card.is-waiting { min-height: 190px; }
   .aw-output { max-height: 240px; }
   .aw-grid { grid-template-columns: 1fr; gap: 14px; }
-  .aw-stepper { margin-bottom: 16px; }
-  .aw-step-label { display: none; }
-  .aw-step-line { margin: 0 6px; min-width: 8px; }
+  .aw-stepper { margin: 8px 0 16px; }
+  .aw-step-label { font-size: 9px; letter-spacing: 0.1em; }
+  .aw-step-line { margin: 0 8px; min-width: 10px; }
   .aw-winner { font-size: 20px; }
   .aw-scores { max-width: 100%; }
+  /* Mode pills: Streamlit keeps them on one line with overflow-x auto,
+     which clips the last option below ~800px; let them wrap instead. */
+  [data-testid="stButtonGroup"] [role="radiogroup"] { flex-wrap: wrap; row-gap: 8px; overflow-x: visible; }
+}
+
+@media (max-width: 640px) {
+  /* Stepper collapses to numbered dots only once labels no longer fit. */
+  .aw-step-label { display: none; }
+  .aw-step-line { margin: 0 6px; min-width: 8px; }
 }
 
 @media (max-width: 560px) {
@@ -838,6 +852,7 @@ div[data-testid="stPills"] button {
   main [data-testid="stColumn"] { flex: 1 1 100% !important; min-width: 100% !important; }
   .aw-header { flex-wrap: wrap; gap: 10px; }
   .aw-wordmark { font-size: 25px; }
+  .aw-brand-mark svg { width: 21px; height: 21px; }
   .aw-dots { display: none; }
   .aw-brand { gap: 10px; }
   .aw-card { min-height: 0; padding: 12px 12px 10px; }
@@ -851,9 +866,6 @@ div[data-testid="stPills"] button {
   .aw-modal-panel { width: 100%; max-height: 92vh; border-radius: 12px; }
   .aw-footer { flex-direction: column; align-items: flex-start; gap: 4px; }
   .aw-pill { flex-wrap: wrap; }
-  /* Mode pills: Streamlit keeps them on one line with overflow-x auto,
-     which clips the last option on phones; let them wrap instead. */
-  [data-testid="stButtonGroup"] [role="radiogroup"] { flex-wrap: wrap; row-gap: 8px; overflow-x: visible; }
 }
 
 /* --- accessibility: honor reduced-motion --- */

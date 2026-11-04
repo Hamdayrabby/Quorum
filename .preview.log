@@ -1,11 +1,1 @@
-2026-11-05 02:27:23.665 Uvicorn server started on :::8598
-
-  You can now view your Streamlit app in your browser.
-
-  Local URL: http://localhost:8598
-  Network URL: http://192.168.0.188:8598
-  External URL: http://163.227.144.136:8598
-
-2026-11-05 02:27:38.605 Please replace `st.components.v1.html` with `st.iframe`.
-
-`st.components.v1.html` will be removed after 2026-06-01.
+2026-11-05 02:33:04.595 Port 8598 is not available

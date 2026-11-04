@@ -58,7 +58,7 @@ def _avatar_html(cfg: AgentConfig, status: AgentStatus) -> str:
     motion = _GLYPH_MOTION.get(cfg.role.name, "")
     return (
         f'<span class="aw-avatar {motion}" aria-hidden="true">'
-        f'<span class="aw-avatar-glyph">{cfg.glyph}</span>'
+        f'<span class="aw-avatar-glyph">{_agent_icon(cfg.role.name)}</span>'
         '<span class="aw-avatar-ring"></span>'
         '<span class="aw-avatar-orbit"><i></i></span>'
         '<span class="aw-avatar-check">&#10003;</span>'
@@ -77,6 +77,58 @@ def _status_tail(role_value: str, status: AgentStatus) -> str:
         f'<span class="aw-verbs-track">{items}</span></span>'
     )
 
+
+
+_ICON_ATTRS = (
+    'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" '
+    'stroke-linecap="round" stroke-linejoin="round"'
+)
+
+# Brand mark: recreation of the Framer "Autonomous Loop" icon (24x24 line art —
+# centre dot, looping arcs, corner brackets). Same visual language as the
+# per-agent icons below: stroke-only, currentColor, rounded caps.
+_BRAND_ICON = (
+    f'<svg class="aw-brand-svg" {_ICON_ATTRS} aria-hidden="true">'
+    '<circle cx="12" cy="12" r="2.6"/>'
+    '<path d="M20 8.99C18.94 6.08 16.39 3.99 13.33 3.51C10.27 3.03 7.2 4.24 5.3 6.69"/>'
+    '<path d="M4 15C5.06 17.91 7.61 20 10.67 20.48C13.73 20.96 16.8 19.76 18.7 17.31"/>'
+    '<path d="M5.3 3.5v3.2h3.2M18.7 20.5v-3.2h-3.2"/>'
+    '</svg>'
+)
+
+# Per-agent icons (24x24, stroke-only) in the same language as the brand mark.
+_AGENT_ICONS: dict[str, str] = {
+    "STRATEGIST": (
+        '<path d="M12 3.5 20 12l-8 8.5L4 12z"/>'
+        '<circle cx="12" cy="12" r="1.4"/>'
+    ),
+    "CHALLENGER": (
+        '<path d="M3.5 7.5h13M16.5 7.5l-4-4M16.5 7.5l-4 4"/>'
+        '<path d="M20.5 16.5h-13M7.5 16.5l4-4M7.5 16.5l4 4"/>'
+    ),
+    "RESEARCHER": (
+        '<circle cx="10.5" cy="10.5" r="6"/>'
+        '<path d="M15 15l5.5 5.5"/>'
+        '<path d="M7.5 10.5a3 3 0 0 1 6 0"/>'
+    ),
+    "DEVILS_ADVOCATE": (
+        '<path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3"/>'
+        '<path d="M17.3 3.5v3.2h-3.2"/>'
+        '<path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3"/>'
+        '<path d="M6.7 20.5v-3.2h3.2"/>'
+    ),
+    "SUPREME_JUDGE": (
+        '<path d="M12 4v15M7.5 19h9M12 6.5l-6 1.5M12 6.5l6 1.5"/>'
+        '<path d="M3 13.5a3 3 0 0 0 6 0L6 8l-3 5.5z"/>'
+        '<path d="M15 13.5a3 3 0 0 0 6 0L18 8l-3 5.5z"/>'
+    ),
+}
+
+
+def _agent_icon(role_name: str) -> str:
+    """Inline stroke-only SVG for one agent, matching the brand mark style."""
+    paths = _AGENT_ICONS.get(role_name, '<circle cx="12" cy="12" r="4"/>')
+    return f'<svg {_ICON_ATTRS} aria-hidden="true">{paths}</svg>'
 
 
 def _stable_html(html: str) -> str:
@@ -120,6 +172,7 @@ def render_header() -> None:
         _stable_html(f"""
         <div class="aw-header">
           <div class="aw-brand">
+            <span class="aw-brand-mark">{_BRAND_ICON}</span>
             <span class="aw-wordmark">QUO<span class="aw-gold">RUM</span></span>
             <span class="aw-vdivider"></span>
             <span class="aw-micro aw-tagline">FIVE MINDS. ONE VERDICT.</span>
