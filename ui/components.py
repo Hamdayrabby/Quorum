@@ -27,6 +27,16 @@ _STAGES: list[tuple[str, str]] = [
 
 _ANALYSIS_ROLES = ("STRATEGIST", "CHALLENGER", "RESEARCHER", "DEVILS_ADVOCATE")
 
+# Per-agent glyph motion while the card is THINKING; applied as a class on
+# the glyph span and animated only inside ``.is-thinking`` (see theme.py).
+_GLYPH_MOTION: dict[str, str] = {
+    "STRATEGIST": "gm-rotate",
+    "CHALLENGER": "gm-lunge",
+    "RESEARCHER": "gm-orbit",
+    "DEVILS_ADVOCATE": "gm-wobble",
+    "SUPREME_JUDGE": "gm-gleam",
+}
+
 
 def _stable_html(html: str) -> str:
     """Drop blank lines so st.markdown keeps the payload as one raw-HTML block.
@@ -86,8 +96,8 @@ def render_banner(missing_keys: list[str]) -> None:
         _stable_html(f"""
         <div class="aw-banner">
           <div class="aw-micro aw-micro-warn">Configuration</div>
-          <div class="aw-banner-body">{escape(", ".join(missing_keys))} not set &#8212;
-          those agents will fail. Add keys to .env.</div>
+          <div class="aw-banner-body">{escape(", ".join(missing_keys))} no API key &#8212;
+          those agents will fail. Add keys to .env or the sidebar Settings.</div>
         </div>
         """),
         unsafe_allow_html=True,
@@ -178,13 +188,18 @@ def render_stepper(state: DebateState | None) -> None:
             f"{line}</div>"
         )
     st.markdown(
-        f'{recap}<div class="aw-stepper">{"".join(steps)}</div>',
+        f'{recap}<div class="aw-stepper" data-phase="{phase}">{"".join(steps)}</div>',
         unsafe_allow_html=True,
     )
 
 
-def render_agent_card(cfg: AgentConfig, result: AgentResult | None) -> None:
-    """One agent card: identity, live status pill and output or error."""
+def render_agent_card(cfg: AgentConfig, result: AgentResult | None, index: int = 0) -> None:
+    """One agent card: identity, live status pill and output or error.
+
+    ``index`` staggers the entrance animation (0-4). The card root carries
+    the status class plus data attributes consumed by ``ui/interactions.py``
+    (expand modal, copy, typewriter reveal); rendering stays declarative.
+    """
     status = result.status if result is not None else AgentStatus.WAITING
     pill_class = {
         AgentStatus.WAITING: "is-waiting",
@@ -200,19 +215,37 @@ def render_agent_card(cfg: AgentConfig, result: AgentResult | None) -> None:
     else:
         body = ""
 
+    has_content = bool(body)
+    eq = (
+        '<span class="aw-eq" title="Reasoning"><span></span><span></span><span></span></span>'
+        if status is AgentStatus.THINKING
+        else ""
+    )
+    expand = (
+        '<button class="aw-expand" type="button" title="Read full output" '
+        'aria-label="Read full output">&#x2922;</button>'
+        if has_content
+        else ""
+    )
     foot = ""
     if status is AgentStatus.COMPLETED and result is not None:
-        foot = f'<div class="aw-card-foot"><span class="aw-latency">{result.latency_s:.1f}s</span></div>'
+        copy_btn = '<button class="aw-copy" type="button">Copy</button>'
+        foot = (
+            '<div class="aw-card-foot">'
+            f'<span class="aw-latency">{result.latency_s:.1f}s</span>{copy_btn}</div>'
+        )
 
+    glyph_motion = _GLYPH_MOTION.get(cfg.role.value, "")
     st.markdown(
         _stable_html(f"""
-        <div class="aw-card" style="--accent:{cfg.accent}">
+        <div class="aw-card {pill_class}" data-role="{escape(cfg.role.value)}" data-name="{escape(cfg.display_name)}" data-model="{escape(cfg.model)}" data-provider="{escape(cfg.provider)}" style="--accent:{cfg.accent};--i:{index}">
           <div class="aw-card-line"></div>
           <div class="aw-card-head">
-            <span class="aw-glyph">{cfg.glyph}</span>
+            <span class="aw-glyph {glyph_motion}">{cfg.glyph}</span>
             <span class="aw-name">{escape(cfg.display_name)}</span>
+            {eq}{expand}
           </div>
-          <span class="aw-chip" title="{escape(cfg.model)}">{escape(cfg.model)}</span>
+          <span class="aw-chip" title="{escape(cfg.provider)}">{escape(cfg.model)}</span>
           <div class="aw-card-tag aw-micro">{escape(cfg.tagline)}</div>
           <span class="aw-pill {pill_class}">
             <span class="aw-pill-dot"></span>{status.value.upper()}
@@ -252,30 +285,34 @@ def _render_verdict_panel(verdict: Verdict) -> None:
     con_width = min(100, max(0, verdict.con_score))
 
     cells: list[str] = []
-    for title, text in (
-        ("Explanation", verdict.explanation),
-        ("Overall conclusion", verdict.conclusion),
-        ("Strongest argument", verdict.strongest_argument),
-        ("Weakest argument", verdict.weakest_argument),
+    for i, (title, text) in enumerate(
+        (
+            ("Explanation", verdict.explanation),
+            ("Overall conclusion", verdict.conclusion),
+            ("Strongest argument", verdict.strongest_argument),
+            ("Weakest argument", verdict.weakest_argument),
+        )
     ):
         if text.strip():
             cells.append(
-                f'<div class="aw-cell"><div class="aw-micro">{title}</div>'
+                f'<div class="aw-cell" style="--i:{i}"><div class="aw-micro">{title}</div>'
                 f'<div class="aw-cell-body">{escape(text)}</div></div>'
             )
     grid = f'<div class="aw-grid">{"".join(cells)}</div>' if cells else ""
 
     sections = ""
+    section_i = 0
     if verdict.key_disagreements:
         items = "".join(f"<li>{escape(d)}</li>" for d in verdict.key_disagreements)
         sections += (
-            '<div class="aw-section"><div class="aw-micro">Key disagreements</div>'
+            f'<div class="aw-section" style="--i:{section_i}"><div class="aw-micro">Key disagreements</div>'
             f'<ul class="aw-list">{items}</ul></div>'
         )
+        section_i += 1
     if verdict.fallacies:
         chips = "".join(f"<span>{escape(f)}</span>" for f in verdict.fallacies)
         sections += (
-            '<div class="aw-section"><div class="aw-micro">Fallacies</div>'
+            f'<div class="aw-section" style="--i:{section_i}"><div class="aw-micro">Fallacies</div>'
             f'<div class="aw-chips">{chips}</div></div>'
         )
 

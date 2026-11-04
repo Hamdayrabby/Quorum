@@ -1,33 +1,36 @@
 """Agent Wars - Streamlit front end.
 
-Slim wiring only: page setup, theme injection, missing-key banner, and the
-single run flow. All rendering lives in ``ui/components.py``; all styling in
-``ui/theme.py``. The view renders exactly what ``DebateOrchestrator`` emits
-and never fabricates a response.
+Slim wiring only: page setup, theme injection, sidebar settings, missing-key
+banner, and the single run flow. All rendering lives in ``ui/components.py``
+and ``ui/settings.py``; all styling in ``ui/theme.py``. The view renders
+exactly what ``DebateOrchestrator`` emits and never fabricates a response.
 """
 from __future__ import annotations
 
 import asyncio
-import os
 
 import streamlit as st
 
 from core.config import AGENT_CONFIGS
 from core.models import DebateState
 from core.orchestrator import DebateOrchestrator
+from core.settings import has_credentials, resolve_config
 from ui import components as ui
+from ui import interactions
+from ui import settings as ui_settings
 from ui.theme import inject, page_config
 
 _ROLES = list(AGENT_CONFIGS)  # pipeline execution order
 
 
 def _missing_keys() -> list[str]:
-    """Env var names for the five agents that are unset or blank."""
-    return [
-        cfg.api_key_env
-        for cfg in AGENT_CONFIGS.values()
-        if not os.environ.get(cfg.api_key_env, "").strip()
-    ]
+    """Env var names for agents with no usable key (settings override or env)."""
+    missing: list[str] = []
+    for role in _ROLES:
+        cfg = resolve_config(role)
+        if not has_credentials(cfg):
+            missing.append(cfg.api_key_env)
+    return missing
 
 
 def _refresh(
@@ -39,9 +42,9 @@ def _refresh(
     """Re-render stepper, five agent cards and the verdict from one state."""
     with stepper_ph.container():
         ui.render_stepper(state)
-    for ph, role in zip(card_phs, _ROLES):
+    for i, (ph, role) in enumerate(zip(card_phs, _ROLES)):
         with ph.container():
-            ui.render_agent_card(AGENT_CONFIGS[role], state.get(role))
+            ui.render_agent_card(resolve_config(role), state.get(role), index=i)
     with verdict_ph.container():
         ui.render_verdict(state)
 
@@ -73,6 +76,8 @@ def _run_debate(
 def main() -> None:
     page_config()
     inject()
+    ui_settings.render_sidebar()
+    interactions.inject()
 
     state: DebateState | None = st.session_state.get("debate")
     ui.render_header()
@@ -82,7 +87,8 @@ def main() -> None:
         ui.render_banner(missing)
     all_missing = len(missing) == len(_ROLES)
     disabled_reason = (
-        "No API keys are configured - add at least one key to .env to enable a debate."
+        "No API keys are configured - add at least one key in .env or the sidebar "
+        "settings to enable a debate."
         if all_missing
         else None
     )
