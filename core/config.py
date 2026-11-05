@@ -94,7 +94,7 @@ AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         # settings override, GLM on River) whose hidden thinking shares this
         # budget — a full audit can reason for thousands of tokens before the
         # first visible word, so this cap stays generous (a cap is not a cost).
-        max_tokens=8000,
+        max_tokens=12000,
         accent="#FF8A4C",
         glyph="\u25ce",
         tagline="Audits both openings for unsupported claims and weak logic.",
@@ -162,7 +162,7 @@ FALLBACK_CONFIGS: dict[AgentRole, AgentConfig] = {
     role: dataclass_replace(AGENT_CONFIGS[role], **overrides) for role, overrides in _FALLBACKS.items()
 }
 
-TIMEOUT_S: float = 90.0
+TIMEOUT_S: float = 150.0  # reasoning models can think well past 90s per call
 MAX_RETRIES: int = 2
 
 

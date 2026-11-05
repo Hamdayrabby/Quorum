@@ -8,9 +8,14 @@ unverified) — the judge never blocks the pipeline on its own second opinion.
 
 from __future__ import annotations
 
+import asyncio
+
 from agents.base import BaseAgent, parse_verdict
 from core.models import AgentResult, Verdict
 from prompts.agent_prompts import judge_prompt, judge_selfcheck_prompt
+
+
+_CHECK_TIMEOUT_S = 120.0
 
 
 class SupremeJudgeAgent(BaseAgent):
@@ -44,7 +49,14 @@ class SupremeJudgeAgent(BaseAgent):
         check_system, check_user = judge_selfcheck_prompt(
             topic, mode, pro_argument, con_argument, analysis, draft.content
         )
-        final = await self.run(check_system, check_user)
+        try:
+            # The check is quality assurance, not the deliverable: bound its
+            # latency so a slow reasoning model cannot stall the verdict.
+            final = await asyncio.wait_for(
+                self.run(check_system, check_user), timeout=_CHECK_TIMEOUT_S
+            )
+        except asyncio.TimeoutError:
+            return verdict, draft
         final_verdict = parse_verdict(final.content)
         if final.ok and final_verdict.parse_ok:
             final_verdict.verified = True

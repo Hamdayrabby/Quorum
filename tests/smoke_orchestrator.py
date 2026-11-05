@@ -57,6 +57,7 @@ _JUDGE_VERDICT: dict = {
     "key_disagreements": ["productivity measurement", "mentorship quality", "cost savings"],
     "conclusion": "Remote work wins when outcomes are measured, not hours.",
     "fallacies": ["hasty generalization", "appeal to tradition", "false dichotomy"],
+    "best_answer": "The strongest synthesis: remote work raises output where work is measurable, but office presence still matters for junior mentoring - a hybrid with structured in-person time answers both sides.",
 }
 _JUDGE_REPLY = json.dumps(_JUDGE_VERDICT)
 
@@ -201,6 +202,7 @@ async def scenario_happy_path() -> None:
     assert verdict.pro_score == 87, verdict.pro_score
     assert verdict.con_score == 72, verdict.con_score
     assert len(verdict.key_disagreements) == 3
+    assert verdict.best_answer.startswith("The strongest synthesis"), verdict.best_answer[:60]
     assert len(verdict.fallacies) == 3
     assert len(updates) >= 8, f"only {len(updates)} on_update calls"
 

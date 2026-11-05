@@ -137,6 +137,7 @@ def parse_verdict(raw_text: str) -> Verdict:
         weakest_argument=_coerce_str(data.get("weakest_argument")),
         key_disagreements=_coerce_str_list(data.get("key_disagreements")),
         conclusion=_coerce_str(data.get("conclusion")),
+        best_answer=_coerce_str(data.get("best_answer")),
         fallacies=_coerce_str_list(data.get("fallacies")),
         raw_text=raw_text,
         parse_ok=True,

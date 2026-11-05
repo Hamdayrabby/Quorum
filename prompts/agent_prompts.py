@@ -138,7 +138,9 @@ def judge_selfcheck_prompt(
         "audit your own draft: (a) every claim you attributed to an answer must actually "
         "appear there; (b) the scores must stay consistent with the evidence audit; (c) the "
         "declared winner must follow from the two scores; (d) no answer may have been "
-        "ignored. Correct any error you find. Reply with ONLY the corrected JSON object in "
+        "ignored; (e) the best_answer must use only claims present in the answers or the "
+        "evidence list, and must concede what the evidence contradicted. Correct any error "
+        "you find. Reply with ONLY the corrected JSON object in "
         "the exact same schema - no markdown fence, no prose. If the draft survives your "
         "audit unchanged, return it as-is."
     )
@@ -190,7 +192,7 @@ _JUDGE_SCHEMA = (
     '"explanation": "<verdict reasoning>", "strongest_argument": "<one argument, quoted '
     'or paraphrased>", "weakest_argument": "<one argument>", "key_disagreements": '
     '["<3-5 items>"], "conclusion": "<overall takeaway>", "fallacies": ["<named '
-    'fallacies if any, else empty>"]}'
+    'fallacies if any, else empty>"], "best_answer": "<120-180 word synthesized answer>"}'
 )
 
 
@@ -208,7 +210,11 @@ def judge_prompt(
         "only on the quality of the arguments presented. You have no stake in either side. "
         "Evaluate logical consistency, argument strength, and evidence quality; identify "
         "logical fallacies; compare both sides fairly; declare a winner; and explain the "
-        "verdict. Scores are qualitative assessments on a 0-100 scale, not measurements. "
+        "verdict. Additionally compose the best_answer: the strongest honest answer to "
+        "the question that could be given after hearing everyone - synthesize the valid "
+        "points from BOTH sides, keep only what survived the evidence audit, concede what "
+        "did not, and never invent facts. Scores are qualitative assessments on a 0-100 "
+        "scale, not measurements. "
         "If a section of the input is empty or failed, judge with what is present and note "
         "the gap in your explanation. You MUST reply with ONLY a JSON object: no markdown "
         "fence, no prose, no text before or after the JSON. It must match EXACTLY this shape:\n"

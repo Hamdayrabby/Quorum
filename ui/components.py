@@ -411,6 +411,14 @@ def _render_verdict_panel(verdict: Verdict) -> None:
                 f'<div class="aw-cell" style="--i:{i}"><div class="aw-micro">{title}</div>'
                 f'<div class="aw-cell-body">{escape(text)}</div></div>'
             )
+    best_answer = (
+        '<div class="aw-best">'
+        '<div class="aw-micro aw-micro-gold">Best answer after all four analyses</div>'
+        f'<div class="aw-best-text">{escape(verdict.best_answer)}</div>'
+        "</div>"
+        if verdict.best_answer.strip()
+        else ""
+    )
     grid = f'<div class="aw-grid">{"".join(cells)}</div>' if cells else ""
 
     sections = ""
@@ -449,6 +457,7 @@ def _render_verdict_panel(verdict: Verdict) -> None:
               <span class="aw-score-num">{verdict.con_score}</span>
             </div>
           </div>
+          {best_answer}
           {grid}
           {sections}
           <div class="aw-verdict-foot">

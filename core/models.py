@@ -64,6 +64,7 @@ class Verdict:
     weakest_argument: str = ""
     key_disagreements: list[str] = field(default_factory=list)
     conclusion: str = ""
+    best_answer: str = ""  # synthesized answer across all four panel analyses
     fallacies: list[str] = field(default_factory=list)
     raw_text: str = ""
     parse_ok: bool = True

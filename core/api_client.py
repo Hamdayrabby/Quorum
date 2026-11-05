@@ -310,8 +310,15 @@ class FallbackClient:
             self.used_model = self._primary.model
             return out
         except ApiError as exc:
-            if exc.status_code not in _TRANSIENT_STATUSES:
+            # status_code is None for transport failures (timeouts, resets) -
+            # those are exactly the cases another model can survive.
+            if exc.status_code is not None and exc.status_code not in _TRANSIENT_STATUSES:
                 raise
+        except ResponseFormatError:
+            # Empty content usually means a reasoning model starved its budget
+            # on hidden thinking - another model often answers where this one
+            # produced nothing.
+            pass
         out = await self._fallback.complete(system, user, temperature=temperature)
         self.used_model = self.fallback_model
         return out

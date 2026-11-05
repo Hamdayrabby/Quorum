@@ -46,6 +46,14 @@ _CON_TEXT = (
 
 _VERDICT = Verdict(
     winner="PRO",
+    best_answer=(
+        "After hearing all four analyses, the honest answer is nuanced: remote work raises "
+        "measured output and widens hiring pools, but the mentoring and serendipity losses "
+        "are real and concentrated on junior staff. The winning position keeps remote as the "
+        "default while mandating structured in-person time for onboarding — both sides' "
+        "strongest points survive, and the unsupported claims (blanket productivity gains, "
+        "inevitable cultural decay) do not."
+    ),
     pro_score=78,
     con_score=64,
     explanation=(

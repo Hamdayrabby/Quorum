@@ -300,6 +300,17 @@ footer { visibility: hidden; }
   letter-spacing: 0.02em;
 }
 .aw-winner .aw-gold { color: var(--gold); }
+.aw-best {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--border));
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 5%, var(--surface));
+}
+.aw-best .aw-micro { margin-bottom: 8px; }
+.aw-best-text { font-size: 14px; line-height: 1.7; color: var(--text); }
+
 .aw-verified {
   font-family: var(--font-mono);
   font-size: 9px;
