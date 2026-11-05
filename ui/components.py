@@ -374,12 +374,15 @@ def render_verdict(state: DebateState) -> None:
     Renders nothing while the debate has not reached the judgment stage.
     """
     if state.verdict is not None:
-        _render_verdict_panel(state.verdict)
+        _render_verdict_panel(state)
     elif state.judge_error is not None:
         _render_judge_failed(state)
 
 
-def _render_verdict_panel(verdict: Verdict) -> None:
+def _render_verdict_panel(state: DebateState) -> None:
+    verdict = state.verdict
+    if verdict is None:  # render_verdict only calls us when a verdict exists
+        return
     if not verdict.parse_ok or verdict.winner not in ("PRO", "CON", "TIE"):
         _render_unparsed_verdict(verdict)
         return
@@ -393,6 +396,15 @@ def _render_verdict_panel(verdict: Verdict) -> None:
 
     pro_width = min(100, max(0, verdict.pro_score))
     con_width = min(100, max(0, verdict.con_score))
+
+    def side_model(role: AgentRole) -> str:
+        result = state.get(role)
+        return result.model_name if result is not None and result.ok else ""
+
+    pro_model = escape(side_model(AgentRole.STRATEGIST))
+    con_model = escape(side_model(AgentRole.CHALLENGER))
+    pro_chip = f'<span class="aw-score-model" title="{pro_model}">{pro_model}</span>' if pro_model else ""
+    con_chip = f'<span class="aw-score-model" title="{con_model}">{con_model}</span>' if con_model else ""
     verified_chip = (
         '<span class="aw-verified">SELF-CHECKED</span>' if verdict.verified else ""
     )
@@ -448,11 +460,13 @@ def _render_verdict_panel(verdict: Verdict) -> None:
           <div class="aw-scores">
             <div class="aw-score-row">
               <span class="aw-score-label aw-micro">For</span>
+              {pro_chip}
               <div class="aw-score-track"><div class="aw-score-fill" style="width:{pro_width}%"></div></div>
               <span class="aw-score-num">{verdict.pro_score}</span>
             </div>
             <div class="aw-score-row">
               <span class="aw-score-label aw-micro">Against</span>
+              {con_chip}
               <div class="aw-score-track"><div class="aw-score-fill aw-score-con" style="width:{con_width}%"></div></div>
               <span class="aw-score-num">{verdict.con_score}</span>
             </div>

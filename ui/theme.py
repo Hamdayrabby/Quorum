@@ -328,6 +328,20 @@ footer { visibility: hidden; }
 .aw-score-fill { height: 100%; border-radius: 4px; background: var(--gold); }
 .aw-score-fill.aw-score-con { background: rgba(248, 113, 113, 0.55); }
 .aw-score-num { width: 44px; text-align: right; font-family: var(--font-mono); font-size: 18px; color: var(--text); }
+.aw-score-model {
+  flex: 0 1 auto;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
 .aw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; margin-top: 18px; }
 .aw-cell { min-width: 0; }
 .aw-cell .aw-micro { margin-bottom: 6px; }
@@ -967,6 +981,7 @@ div[data-testid="stPills"] button {
   .aw-verdict-head { gap: 8px; }
   .aw-winner { font-size: 18px; letter-spacing: 0.02em; }
   .aw-score-num { font-size: 15px; }
+  .aw-score-model { display: none; }
   .aw-modal { padding: 10px; }
   .aw-modal-panel { width: 100%; max-height: 92vh; border-radius: 12px; }
   .aw-footer { flex-direction: column; align-items: flex-start; gap: 4px; }
