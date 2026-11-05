@@ -305,6 +305,7 @@ class FallbackClient:
         self.used_model: str | None = None
 
     async def complete(self, system: str, user: str, *, temperature: float | None = None) -> str:
+        primary_error: Exception | None = None
         try:
             out = await self._primary.complete(system, user, temperature=temperature)
             self.used_model = self._primary.model
@@ -314,11 +315,23 @@ class FallbackClient:
             # those are exactly the cases another model can survive.
             if exc.status_code is not None and exc.status_code not in _TRANSIENT_STATUSES:
                 raise
-        except ResponseFormatError:
+            primary_error = exc
+        except ResponseFormatError as exc:
             # Empty content usually means a reasoning model starved its budget
             # on hidden thinking - another model often answers where this one
             # produced nothing.
-            pass
-        out = await self._fallback.complete(system, user, temperature=temperature)
+            primary_error = exc
+        try:
+            out = await self._fallback.complete(system, user, temperature=temperature)
+        except ApiError as exc:
+            raise ApiError(
+                exc.provider,
+                exc.status_code,
+                f"{exc.message} (primary model failed first: {primary_error})",
+            ) from exc
+        except ResponseFormatError as exc:
+            raise ResponseFormatError(
+                f"{exc} (primary model failed first: {primary_error})"
+            ) from exc
         self.used_model = self.fallback_model
         return out

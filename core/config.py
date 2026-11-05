@@ -146,10 +146,14 @@ DEBATE_MODES: list[str] = ["Technology", "Science", "Education", "Business", "So
 # gets throttled re-asks a different model instead of failing the debate.
 # Permanent errors (bad key, malformed request) never trigger a fallback.
 _FALLBACKS: dict[AgentRole, dict] = {
+    # GLM models reason before answering; the primary's small budget would
+    # starve them into empty content, so fallbacks carry reasoning headroom.
     AgentRole.STRATEGIST: {"provider": "River AI · GLM", "model": "GLM-5.3",
-                           "base_url": _RIVER_BASE_URL, "api_key_env": "RIVER_API_KEY"},
+                           "base_url": _RIVER_BASE_URL, "api_key_env": "RIVER_API_KEY",
+                           "max_tokens": 6000},
     AgentRole.CHALLENGER: {"provider": "River AI · GLM", "model": "zai-org/GLM-5.3-Flash",
-                           "base_url": _RIVER_BASE_URL, "api_key_env": "RIVER_API_KEY"},
+                           "base_url": _RIVER_BASE_URL, "api_key_env": "RIVER_API_KEY",
+                           "max_tokens": 6000},
     AgentRole.RESEARCHER: {"provider": "NVIDIA NIM", "model": "nvidia/nemotron-3.5-bolt-e4b",
                            "base_url": "https://integrate.api.nvidia.com/v1", "api_key_env": "NVIDIA_API_KEY"},
     AgentRole.DEVILS_ADVOCATE: {"provider": "River AI · DeepSeek", "model": "deepseek-ai/DeepSeek-V4.1-Flash",

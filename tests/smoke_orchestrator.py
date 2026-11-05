@@ -337,6 +337,19 @@ async def scenario_fallback() -> None:
     assert fallbacks[AgentRole.STRATEGIST].calls == 1, "fallback must answer after 429"
     assert state.completed_count() == 5
 
+    # Both models dying must surface BOTH failures, not just the fallback's.
+    clients = make_clients(failures={AgentRole.STRATEGIST}, fail_status=429)
+    broken_fallbacks = make_clients(failures={AgentRole.STRATEGIST}, fail_status=500)
+    orchestrator = DebateOrchestrator(
+        client_factory=lambda role: clients[role],
+        fallback_client_factory=lambda role: broken_fallbacks[role],
+        search_factory=lambda role: fake_search,
+    )
+    state = await orchestrator.run_debate(_TOPIC, _MODE)
+    strategist = state.get(AgentRole.STRATEGIST)
+    assert strategist is not None and strategist.status is AgentStatus.FAILED
+    assert "primary model failed first" in (strategist.error or ""), strategist.error
+
 
 def main() -> None:
     scenario_happy_path()
